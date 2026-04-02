@@ -1,7 +1,10 @@
 import json
 from typing import List, Dict, Any
 
-import pymysql
+try:
+    import pymysql
+except ImportError:
+    pymysql = None
 
 from biz.cmd.func.base import LLMReviewFunc
 
@@ -61,6 +64,9 @@ class MySQLReviewFunc(LLMReviewFunc):
         ]
 
     def get_mysql_schema(self):
+        if pymysql is None:
+            raise ImportError("pymysql模块未安装，请运行: pip install PyMySQL")
+        
         conn = pymysql.connect(
             host=self.host,
             port=self.port,

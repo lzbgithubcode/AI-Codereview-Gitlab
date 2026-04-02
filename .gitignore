@@ -1,16 +1,74 @@
+# 系统文件
 .DS_Store
+Thumbs.db
+
+# Python环境
 venv/
 .venv/
-test/
-.idea/
+env/
+ENV/
+*.pyc
+__pycache__/
+.pytest_cache/
+.mypy_cache/
 
+# IDE配置文件
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 测试和临时文件
+test/
+temp/
+tmp/
+*.tmp
+*.temp
+
+# 项目特定目录
 log/*
 !log/.gitkeep
 data/*
 !data/.gitkeep
 
+# 配置文件
 conf/.env
-.pyc
-__pycache__/
+.env
+.env.local
+.env.*.local
+
+# 开发工具
 .cursorignore
 .cursor
+
+# 构建产物
+build/
+dist/
+*.egg-info/
+
+# 文档生成
+_site/
+.sass-cache/
+.jekyll-cache/
+
+# 操作系统
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# 字体文件（可选，如果不需要中文字体支持）
+# fonts/SourceHanSansCN-Regular.otf
+
+# GitHub相关（如果不需要CI/CD）
+.github/
+
+# 文档图片（可选）
+# doc/img/

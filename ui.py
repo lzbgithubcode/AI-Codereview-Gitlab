@@ -1,4 +1,23 @@
 # -*- coding: utf-8 -*-
+"""
+AI代码审查平台 - 用户界面模块
+
+本模块提供AI代码审查平台的Web界面，基于Streamlit框架构建。
+主要功能包括用户认证、数据展示、图表生成等。
+
+et_global_font() - 字体设置功能说明
+generate_token() - token生成算法说明
+verify_token() - token验证流程说明
+check_login_status() - 登录状态检查逻辑
+set_login_status() - 登录状态设置功能
+authenticate() - 用户认证逻辑
+get_data() - 数据处理流程说明
+login_page() - 登录页面渲染功能
+generate_project_count_chart() - 项目统计图表生成
+generate_project_score_chart() - 项目分数图表生成
+main_page() - 主页面功能说明
+"""
+
 import math
 from pathlib import Path
 
@@ -28,7 +47,14 @@ load_dotenv("conf/.env")
 
 
 def set_global_font():
-    """设置全局字体，如果字体文件不存在则忽略并使用默认字体"""
+    """
+    设置全局字体，如果字体文件不存在则忽略并使用默认字体
+    
+    功能：
+    - 检查并加载自定义中文字体文件
+    - 解决matplotlib中文字符显示问题
+    - 解决负号显示问题
+    """
     font_path = "fonts/SourceHanSansCN-Regular.otf"
     if Path(font_path).exists():
         try:
@@ -60,7 +86,20 @@ cookies = CookieManager()
 
 
 def generate_token(username):
-    """生成包含时间戳的认证token"""
+    """
+    生成包含时间戳的认证token
+    
+    参数:
+        username (str): 用户名
+        
+    返回:
+        str: 编码后的认证token
+        
+    实现原理:
+        - 使用HMAC-SHA256算法生成签名
+        - 包含用户名和时间戳信息
+        - 使用base64编码确保token安全传输
+    """
     timestamp = str(int(time.time()))
     message = f"{username}:{timestamp}"
 
@@ -77,7 +116,20 @@ def generate_token(username):
 
 
 def verify_token(token):
-    """验证token的有效性并提取用户名"""
+    """
+    验证token的有效性并提取用户名
+    
+    参数:
+        token (str): 待验证的认证token
+        
+    返回:
+        str or None: 验证成功返回用户名，失败返回None
+        
+    验证流程:
+        1. 解码token并提取用户名和时间戳
+        2. 验证HMAC签名是否匹配
+        3. 检查token是否在有效期内（30天）
+    """
     try:
         # 解码token
         decoded = base64.b64decode(token.encode()).decode()
@@ -107,6 +159,18 @@ def verify_token(token):
 
 # 检查登录状态
 def check_login_status():
+    """
+    检查用户登录状态
+    
+    返回:
+        bool: 用户是否已登录
+        
+    检查流程:
+        1. 检查cookie管理器是否就绪
+        2. 检查session状态中的登录状态
+        3. 尝试从cookie中获取并验证token
+        4. 更新session状态
+    """
     if not cookies.ready():
         st.stop()
 
@@ -127,6 +191,18 @@ def check_login_status():
 
 # 设置登录状态
 def set_login_status(username, remember):
+    """
+    设置用户登录状态
+    
+    参数:
+        username (str): 用户名
+        remember (bool): 是否记住登录状态
+        
+    功能:
+        - 更新session状态
+        - 根据remember参数处理cookie
+        - 保存认证token（如果选择记住密码）
+    """
     st.session_state['login_status'] = True
     st.session_state['username'] = username
     st.session_state['saved_username'] = username if remember else ''
@@ -154,6 +230,22 @@ def get_saved_credentials():
 
 # 登录验证函数
 def authenticate(username, password, remember_password=False):
+    """
+    验证用户登录信息
+    
+    参数:
+        username (str): 用户名
+        password (str): 密码
+        remember_password (bool): 是否记住密码
+        
+    返回:
+        bool: 验证是否成功
+        
+    验证逻辑:
+        - 检查用户名是否存在于凭证字典中
+        - 检查密码是否匹配
+        - 验证成功则设置登录状态
+    """
     if username in USER_CREDENTIALS and USER_CREDENTIALS[username] == password:
         set_login_status(username, remember_password)
         return True
@@ -162,6 +254,26 @@ def authenticate(username, password, remember_password=False):
 
 # 获取数据函数
 def get_data(service_func, authors=None, project_names=None, updated_at_gte=None, updated_at_lte=None, columns=None):
+    """
+    获取并格式化审查数据
+    
+    参数:
+        service_func (function): 数据服务函数
+        authors (list): 开发者筛选列表
+        project_names (list): 项目名称筛选列表
+        updated_at_gte (int): 开始时间戳
+        updated_at_lte (int): 结束时间戳
+        columns (list): 需要返回的列名列表
+        
+    返回:
+        DataFrame: 格式化后的数据
+        
+    数据处理流程:
+        1. 调用服务函数获取原始数据
+        2. 处理时间戳格式
+        3. 计算代码变更行数
+        4. 筛选指定列返回
+    """
     df = service_func(authors=authors, project_names=project_names, updated_at_gte=updated_at_gte,
                       updated_at_lte=updated_at_lte)
 
@@ -175,6 +287,7 @@ def get_data(service_func, authors=None, project_names=None, updated_at_gte=None
         )
 
     def format_delta(row):
+        """格式化代码变更行数显示"""
         if not math.isnan(row['additions']) and not math.isnan(row['deletions']):
             return f"+{int(row['additions'])}  -{int(row['deletions'])}"
         else:
@@ -295,6 +408,15 @@ st.markdown(
 
 # 登录界面
 def login_page():
+    """
+    渲染登录页面
+    
+    功能:
+        - 显示登录表单
+        - 处理用户认证
+        - 提供安全提示
+        - 支持记住密码功能
+    """
     # 使用 st.columns 创建居中布局
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -333,6 +455,17 @@ def login_page():
 
 # 生成项目提交数量图表
 def generate_project_count_chart(df):
+    """
+    生成项目提交数量统计图表
+    
+    参数:
+        df (DataFrame): 包含项目数据的DataFrame
+        
+    功能:
+        - 统计每个项目的提交数量
+        - 生成柱状图展示项目活跃度
+        - 使用不同颜色区分不同项目
+    """
     if df.empty:
         st.info("没有数据可供展示")
         return
@@ -359,6 +492,17 @@ def generate_project_count_chart(df):
 
 # 生成项目平均分数图表
 def generate_project_score_chart(df):
+    """
+    生成项目平均分数统计图表
+    
+    参数:
+        df (DataFrame): 包含项目分数数据的DataFrame
+        
+    功能:
+        - 计算每个项目的平均审查分数
+        - 生成柱状图展示项目代码质量
+        - 使用不同颜色区分不同项目
+    """
     if df.empty:
         st.info("没有数据可供展示")
         return
@@ -486,6 +630,15 @@ PRO_VERSION_URL = "https://github.com/sunmh207/AI-Codereview-Gitlab/blob/main/do
 
 # 主要内容
 def main_page():
+    """
+    渲染主页面内容
+    
+    功能:
+        - 显示顶部导航栏
+        - 根据配置显示不同的数据标签页
+        - 提供数据筛选和展示功能
+        - 显示统计图表
+    """
     # 顶部导航：标题、留白、退出登录与 Pro 版（两按钮不重叠，留出间距）
     # col_title, col_space, col_actions = st.columns([5, 1.5, 3.5])
     # with col_title:

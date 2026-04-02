@@ -1,0 +1,34 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "AI-Codereview API",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/api.py",
+            "console": "integratedTerminal",
+            "env": {
+                "FLASK_APP": "api.py",
+                "FLASK_ENV": "development"
+            },
+            "envFile": "${workspaceFolder}/conf/.env"
+        },
+        {
+            "name": "AI-Codereview Dashboard",
+            "type": "python",
+            "request": "launch",
+            "program": "/Users/lzb/Desktop/tibi/AI-Code/AI-Codereview-Gitlab/venv/bin/streamlit",
+            "args": [
+                "run",
+                "ui.py",
+                "--server.port=5002",
+                "--server.address=0.0.0.0"
+            ],
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/conf/.env"
+        }
+    ]
+}

@@ -321,7 +321,7 @@ def login_page():
             username = st.text_input("👤 用户名", value=saved_username)
             password = st.text_input("🔑 密码", type="password", value=saved_password)
             remember_password = st.checkbox("记住密码", value=bool(saved_username))
-            submit = st.form_submit_button("登 录")
+            submit = st.form_submit_button("登 录", use_container_width=True)
 
             if submit:
                 if authenticate(username, password, remember_password):
@@ -487,25 +487,39 @@ PRO_VERSION_URL = "https://github.com/sunmh207/AI-Codereview-Gitlab/blob/main/do
 # 主要内容
 def main_page():
     # 顶部导航：标题、留白、退出登录与 Pro 版（两按钮不重叠，留出间距）
-    col_title, col_space, col_actions = st.columns([5, 1.5, 3.5])
+    # col_title, col_space, col_actions = st.columns([5, 1.5, 3.5])
+    # with col_title:
+    #     st.markdown("#### 📊 代码审查统计")
+    # with col_actions:
+    #     # 两列分别放退出登录、Pro 版，比例略偏右列以容纳较长文案
+    #     sub_col_logout, sub_col_pro = st.columns([1, 1.15])
+    #     with sub_col_logout:
+    #         if st.button("退出登录", key="logout_button", use_container_width=True):
+    #             logout()
+    #     with sub_col_pro:
+    #         st.markdown(
+    #             '<div class="pro-link-wrap">'
+    #             '<a href="' + PRO_VERSION_URL + '" target="_blank" rel="noopener noreferrer" class="pro-link">开源版 VS Pro 版</a>'
+    #             '</div>',
+    #             unsafe_allow_html=True
+    #         )
+    # 顶部导航：标题、留白、退出登录（右上角，顶部留白20px）
+    col_title, col_space, col_actions = st.columns([5, 1, 0.8])   # 保留原有的留白列
     with col_title:
         st.markdown("#### 📊 代码审查统计")
-    with col_actions:
-        # 两列分别放退出登录、Pro 版，比例略偏右列以容纳较长文案
-        sub_col_logout, sub_col_pro = st.columns([1, 1.15])
-        with sub_col_logout:
-            if st.button("退出登录", key="logout_button", use_container_width=True):
-                logout()
-        with sub_col_pro:
-            st.markdown(
-                '<div class="pro-link-wrap">'
-                '<a href="' + PRO_VERSION_URL + '" target="_blank" rel="noopener noreferrer" class="pro-link">开源版 VS Pro 版</a>'
-                '</div>',
-                unsafe_allow_html=True
-            )
 
-    current_date = datetime.date.today()
-    start_date_default = current_date - datetime.timedelta(days=7)
+    with col_actions:
+        # 使用 flex 布局将按钮右对齐，并添加顶部边距
+        st.markdown(
+            '<div style="display: flex; justify-content: flex-end;">',
+            unsafe_allow_html=True
+        )
+        if st.button("退出登录", key="logout_button", use_container_width=False):
+            logout()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        current_date = datetime.date.today()
+        start_date_default = current_date - datetime.timedelta(days=7)
 
     # 根据环境变量决定是否显示 push_tab
     show_push_tab = os.environ.get('PUSH_REVIEW_ENABLED', '0') == '1'

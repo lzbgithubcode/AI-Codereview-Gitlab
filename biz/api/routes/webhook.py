@@ -85,8 +85,15 @@ def handle_gitlab_webhook(data):
     """
     object_kind = data.get("object_kind")
 
-    # 优先从请求头获取，如果没有，则从环境变量获取，如果没有，则从推送事件中获取
-    gitlab_url = os.getenv('GITLAB_URL') or request.headers.get('X-Gitlab-Instance')
+    # 严格优先从环境变量获取配置
+    gitlab_url = os.getenv('GITLAB_URL')
+    gitlab_token = os.getenv('GITLAB_ACCESS_TOKEN')
+    
+    # 如果环境变量中没有配置，才尝试从请求头获取
+    if not gitlab_url:
+        gitlab_url = request.headers.get('X-Gitlab-Instance')
+    
+    # 如果仍然没有URL，尝试从webhook数据中解析
     if not gitlab_url:
         repository = data.get('repository')
         if not repository:
@@ -100,13 +107,21 @@ def handle_gitlab_webhook(data):
         except Exception as e:
             return jsonify({"error": f"Failed to parse homepage URL: {str(e)}"}), 400
 
-    # 优先从环境变量获取，如果没有，则从请求头获取
-    gitlab_token = os.getenv('GITLAB_ACCESS_TOKEN') or request.headers.get('X-Gitlab-Token')
+    # 如果环境变量中没有token，尝试从请求头获取
+    if not gitlab_token:
+        gitlab_token = request.headers.get('X-Gitlab-Token')
+    
     # 如果gitlab_token为空，返回错误
     if not gitlab_token:
         return jsonify({'message': 'Missing GitLab access token'}), 400
 
+    # 确保所有参数都是字符串类型，避免bytes类型问题
+    gitlab_url = str(gitlab_url).strip()
+    gitlab_token = str(gitlab_token).strip()
     gitlab_url_slug = slugify_url(gitlab_url)
+    
+    # 添加调试日志，确认配置正确
+    logger.info(f'GitLab配置 - URL: {gitlab_url}, Token: {gitlab_token[:10]}...')
 
     # 打印整个payload数据，或根据需求进行处理
     logger.info(f'Received event: {object_kind}')

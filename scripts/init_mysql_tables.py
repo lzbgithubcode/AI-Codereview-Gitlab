@@ -20,7 +20,7 @@ def init_mysql_tables():
         with DBConnectionFactory.get_connection() as conn:
             cursor = conn.cursor()
             
-            # 创建mr_review_log表
+            # 创建mr_review_log表（增强版，支持结构化审查结果）
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS mr_review_log (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -33,6 +33,16 @@ def init_mysql_tables():
                     score INT,
                     url TEXT,
                     review_result TEXT,
+                    
+                    -- 结构化审查结果字段
+                    total_issues INT DEFAULT 0,
+                    critical_issues INT DEFAULT 0,
+                    high_issues INT DEFAULT 0,
+                    medium_issues INT DEFAULT 0,
+                    low_issues INT DEFAULT 0,
+                    suggestion_issues INT DEFAULT 0,
+                    estimated_time_hours FLOAT DEFAULT 0.0,
+                    
                     additions INT DEFAULT 0,
                     deletions INT DEFAULT 0,
                     last_commit_id VARCHAR(255) DEFAULT '',
@@ -40,7 +50,7 @@ def init_mysql_tables():
                 )
             ''')
             
-            # 创建push_review_log表
+            # 创建push_review_log表（增强版，支持结构化审查结果）
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS push_review_log (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -51,6 +61,16 @@ def init_mysql_tables():
                     commit_messages TEXT,
                     score INT,
                     review_result TEXT,
+                    
+                    -- 结构化审查结果字段
+                    total_issues INT DEFAULT 0,
+                    critical_issues INT DEFAULT 0,
+                    high_issues INT DEFAULT 0,
+                    medium_issues INT DEFAULT 0,
+                    low_issues INT DEFAULT 0,
+                    suggestion_issues INT DEFAULT 0,
+                    estimated_time_hours FLOAT DEFAULT 0.0,
+                    
                     additions INT DEFAULT 0,
                     deletions INT DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

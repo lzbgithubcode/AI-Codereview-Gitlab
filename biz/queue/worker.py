@@ -18,6 +18,7 @@ from biz.utils.log import logger
 def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gitlab_url_slug: str):
     push_review_enabled = os.environ.get('PUSH_REVIEW_ENABLED', '0') == '1'
     try:
+        logger.info('gitlab_url: %s, gitlab_token=:%s', gitlab_url,gitlab_token)
         handler = PushHandler(webhook_data, gitlab_token, gitlab_url)
         logger.info('Push Hook event received')
         commits = handler.get_push_commits()
@@ -37,16 +38,33 @@ def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gi
             if not changes:
                 logger.info('未检测到PUSH代码的修改,修改文件可能不满足SUPPORTED_EXTENSIONS。')
             review_result = "关注的文件没有修改"
+            # 初始化结构化数据为默认值
+            structured_data = {
+                'total_issues': 0,
+                'critical_issues': 0,
+                'high_issues': 0,
+                'medium_issues': 0,
+                'low_issues': 0,
+                'suggestion_issues': 0,
+                'estimated_time_hours': 0.0
+            }
 
             if len(changes) > 0:
                 commits_text = ';'.join(commit.get('message', '').strip() for commit in commits)
-                review_result = CodeReviewer().review_and_strip_code(str(changes), commits_text)
+                # 使用新的结构化审查方法
+                review_data = CodeReviewer().review_code_with_stats(str(changes), commits_text)
+                review_result = review_data['review_result']
+                structured_data = review_data['structured_data']
                 score = CodeReviewer.parse_review_score(review_text=review_result)
                 for item in changes:
                     additions += item['additions']
                     deletions += item['deletions']
-            # 将review结果提交到Gitlab的 notes
-            handler.add_push_notes(f'Auto Review Result: \n{review_result}')
+
+        # 将review结果提交到Gitlab的 notes（始终执行，无论是否启用Push审查）
+        if review_result:
+            handler.add_push_notes(f'AI代码审查结果: \n{review_result}')
+        else:
+            logger.info('没有需要添加的评论内容')
 
         event_manager['push_reviewed'].send(PushReviewEntity(
             project_name=webhook_data['project']['name'],
@@ -60,6 +78,14 @@ def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gi
             webhook_data=webhook_data,
             additions=additions,
             deletions=deletions,
+            # 添加结构化审查数据
+            total_issues=structured_data.get('total_issues', 0),
+            critical_issues=structured_data.get('critical_issues', 0),
+            high_issues=structured_data.get('high_issues', 0),
+            medium_issues=structured_data.get('medium_issues', 0),
+            low_issues=structured_data.get('low_issues', 0),
+            suggestion_issues=structured_data.get('suggestion_issues', 0),
+            estimated_time_hours=structured_data.get('estimated_time_hours', 0.0)
         ))
 
     except Exception as e:
@@ -135,7 +161,10 @@ def handle_merge_request_event(webhook_data: dict, gitlab_token: str, gitlab_url
 
         # review 代码
         commits_text = ';'.join(commit.get('message', '').strip() for commit in commits)
-        review_result = CodeReviewer().review_and_strip_code(str(changes), commits_text)
+        # 使用新的结构化审查方法
+        review_data = CodeReviewer().review_code_with_stats(str(changes), commits_text)
+        review_result = review_data['review_result']
+        structured_data = review_data['structured_data']
 
         # 将review结果提交到Gitlab的 notes
         handler.add_merge_request_notes(f'Auto Review Result: \n{review_result}')
@@ -157,6 +186,14 @@ def handle_merge_request_event(webhook_data: dict, gitlab_token: str, gitlab_url
                 additions=additions,
                 deletions=deletions,
                 last_commit_id=last_commit_id,
+                # 添加结构化审查数据
+                total_issues=structured_data.get('total_issues', 0),
+                critical_issues=structured_data.get('critical_issues', 0),
+                high_issues=structured_data.get('high_issues', 0),
+                medium_issues=structured_data.get('medium_issues', 0),
+                low_issues=structured_data.get('low_issues', 0),
+                suggestion_issues=structured_data.get('suggestion_issues', 0),
+                estimated_time_hours=structured_data.get('estimated_time_hours', 0.0),
             )
         )
 
@@ -190,7 +227,10 @@ def handle_github_push_event(webhook_data: dict, github_token: str, github_url: 
 
             if len(changes) > 0:
                 commits_text = ';'.join(commit.get('message', '').strip() for commit in commits)
-                review_result = CodeReviewer().review_and_strip_code(str(changes), commits_text)
+                # 使用新的结构化审查方法
+                review_data = CodeReviewer().review_code_with_stats(str(changes), commits_text)
+                review_result = review_data['review_result']
+                structured_data = review_data['structured_data']
                 score = CodeReviewer.parse_review_score(review_text=review_result)
                 for item in changes:
                     additions += item.get('additions', 0)
@@ -275,7 +315,10 @@ def handle_github_pull_request_event(webhook_data: dict, github_token: str, gith
 
         # review 代码
         commits_text = ';'.join(commit.get('message', '').strip() for commit in commits)
-        review_result = CodeReviewer().review_and_strip_code(str(changes), commits_text)
+        # 使用新的结构化审查方法
+        review_data = CodeReviewer().review_code_with_stats(str(changes), commits_text)
+        review_result = review_data['review_result']
+        structured_data = review_data['structured_data']
 
         # 将review结果提交到GitHub的 notes
         handler.add_pull_request_notes(f'Auto Review Result: \n{review_result}')
@@ -329,7 +372,10 @@ def handle_gitea_push_event(webhook_data: dict, gitea_token: str, gitea_url: str
 
             if len(changes) > 0:
                 commits_text = ';'.join(commit.get('message', '').strip() for commit in commits)
-                review_result = CodeReviewer().review_and_strip_code(str(changes), commits_text)
+                # 使用新的结构化审查方法
+                review_data = CodeReviewer().review_code_with_stats(str(changes), commits_text)
+                review_result = review_data['review_result']
+                structured_data = review_data['structured_data']
                 score = CodeReviewer.parse_review_score(review_text=review_result)
                 for item in changes:
                     additions += item.get('additions', 0)

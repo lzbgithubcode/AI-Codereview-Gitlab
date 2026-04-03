@@ -84,10 +84,10 @@ class MergeRequestHandler:
         retry_delay = 10  # 重试间隔时间（秒）
         for attempt in range(max_retries):
             # 调用 GitLab API 获取 Merge Request 的 changes
-            url = urljoin(f"{self.gitlab_url}/",
+            url = urljoin(f"{str(self.gitlab_url)}/",
                           f"api/v4/projects/{self.project_id}/merge_requests/{self.merge_request_iid}/changes?access_raw_diffs=true")
             headers = {
-                'Private-Token': self.gitlab_token
+                'Private-Token': str(self.gitlab_token)
             }
             response = requests.get(url, headers=headers, verify=False)
             logger.debug(
@@ -115,10 +115,10 @@ class MergeRequestHandler:
             return []
 
         # 调用 GitLab API 获取 Merge Request 的 commits
-        url = urljoin(f"{self.gitlab_url}/",
+        url = urljoin(f"{str(self.gitlab_url)}/",
                       f"api/v4/projects/{self.project_id}/merge_requests/{self.merge_request_iid}/commits")
         headers = {
-            'Private-Token': self.gitlab_token
+            'Private-Token': str(self.gitlab_token)
         }
         response = requests.get(url, headers=headers, verify=False)
         logger.debug(f"Get commits response from gitlab: {response.status_code}, {response.text}")
@@ -129,29 +129,58 @@ class MergeRequestHandler:
             logger.warn(f"Failed to get commits: {response.status_code}, {response.text}")
             return []
 
-    def add_merge_request_notes(self, review_result):
-        url = urljoin(f"{self.gitlab_url}/",
+    def add_merge_request_notes(self, review_result, max_retries: int = 3):
+        url = urljoin(f"{str(self.gitlab_url)}/",
                       f"api/v4/projects/{self.project_id}/merge_requests/{self.merge_request_iid}/notes")
         headers = {
-            'Private-Token': self.gitlab_token,
+            'Private-Token': str(self.gitlab_token),
             'Content-Type': 'application/json'
         }
         data = {
             'body': review_result
         }
-        response = requests.post(url, headers=headers, json=data, verify=False)
-        logger.debug(f"Add notes to gitlab {url}: {response.status_code}, {response.text}")
-        if response.status_code == 201:
-            logger.info("Note successfully added to merge request.")
-        else:
-            logger.error(f"Failed to add note: {response.status_code}")
-            logger.error(response.text)
+        
+        # 添加重试机制
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(url, headers=headers, json=data, verify=False, timeout=30)
+                logger.debug(f"Add notes to gitlab {url}: {response.status_code}, {response.text}")
+                
+                if response.status_code == 201:
+                    logger.info("Note successfully added to merge request.")
+                    return True
+                elif response.status_code == 401:
+                    logger.error("GitLab token authentication failed.")
+                    break
+                elif response.status_code == 403:
+                    logger.error("GitLab permission denied for adding notes.")
+                    break
+                elif response.status_code == 404:
+                    logger.error("GitLab resource not found (project or merge request).")
+                    break
+                else:
+                    logger.warning(f"Attempt {attempt+1} failed: {response.status_code}")
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(2 ** attempt)  # 指数退避
+                        
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Network error on attempt {attempt+1}: {e}")
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(2 ** attempt)
+            except Exception as e:
+                logger.error(f"Unexpected error on attempt {attempt+1}: {e}")
+                break
+                
+        logger.error(f"Failed to add note after {max_retries} attempts.")
+        return False
 
     def target_branch_protected(self) -> bool:
-        url = urljoin(f"{self.gitlab_url}/",
+        url = urljoin(f"{str(self.gitlab_url)}/",
                       f"api/v4/projects/{self.project_id}/protected_branches")
         headers = {
-            'Private-Token': self.gitlab_token,
+            'Private-Token': str(self.gitlab_token),
             'Content-Type': 'application/json'
         }
         response = requests.get(url, headers=headers, verify=False)
@@ -170,7 +199,8 @@ class PushHandler:
     def __init__(self, webhook_data: dict, gitlab_token: str, gitlab_url: str):
         self.webhook_data = webhook_data
         self.gitlab_token = gitlab_token
-        self.gitlab_url = gitlab_url
+        # 确保gitlab_url是字符串类型，避免bytes类型问题
+        self.gitlab_url = str(gitlab_url).strip()
         self.event_type = None
         self.project_id = None
         self.branch_name = None
@@ -188,6 +218,20 @@ class PushHandler:
         self.project_id = self.webhook_data.get('project_id', None)
         if self.project_id is None:
             self.project_id = self.webhook_data.get('project', {}).get('id')
+        
+        # 增强调试日志，显示webhook数据结构和提取结果
+        logger.info(f"Webhook数据键值: {list(self.webhook_data.keys())}")
+        if 'project' in self.webhook_data:
+            logger.info(f"project对象内容: {self.webhook_data.get('project', {})}")
+        
+        # 确保project_id有值，避免None导致的URL构造错误
+        if self.project_id is None:
+            logger.error(f"Failed to extract project_id from webhook data. Available keys: {list(self.webhook_data.keys())}")
+            # 提供一个默认值，避免URL构造错误
+            self.project_id = "unknown"
+        else:
+            logger.info(f"成功获取到project_id: {self.project_id}")
+            
         self.branch_name = self.webhook_data.get('ref', '').replace('refs/heads/', '')
         self.commit_list = self.webhook_data.get('commits', [])
 
@@ -211,41 +255,70 @@ class PushHandler:
         logger.info(f"Collected {len(commit_details)} commits from push event.")
         return commit_details
 
-    def add_push_notes(self, message: str):
+    def add_push_notes(self, message: str, max_retries: int = 3):
         # 添加评论到 GitLab Push 请求的提交中（此处假设是在最后一次提交上添加注释）
         if not self.commit_list:
             logger.warn("No commits found to add notes to.")
-            return
+            return False
 
         # 获取最后一个提交的ID
         last_commit_id = self.commit_list[-1].get('id')
         if not last_commit_id:
             logger.error("Last commit ID not found.")
-            return
+            return False
 
-        url = urljoin(f"{self.gitlab_url}/",
+        url = urljoin(f"{str(self.gitlab_url)}/",
                       f"api/v4/projects/{self.project_id}/repository/commits/{last_commit_id}/comments")
         headers = {
-            'Private-Token': self.gitlab_token,
+            'Private-Token': str(self.gitlab_token),
             'Content-Type': 'application/json'
         }
         data = {
             'note': message
         }
-        response = requests.post(url, headers=headers, json=data, verify=False)
-        logger.debug(f"Add comment to commit {last_commit_id}: {response.status_code}, {response.text}")
-        if response.status_code == 201:
-            logger.info("Comment successfully added to push commit.")
-        else:
-            logger.error(f"Failed to add comment: {response.status_code}")
-            logger.error(response.text)
+        
+        # 添加重试机制
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(url, headers=headers, json=data, verify=False, timeout=30)
+                logger.debug(f"Add comment to commit {last_commit_id}: {response.status_code}, {response.text}")
+                
+                if response.status_code == 201:
+                    logger.info("Comment successfully added to push commit.")
+                    return True
+                elif response.status_code == 401:
+                    logger.error("GitLab token authentication failed.")
+                    break
+                elif response.status_code == 403:
+                    logger.error("GitLab permission denied for adding comments.")
+                    break
+                elif response.status_code == 404:
+                    logger.error("GitLab resource not found (project or commit).")
+                    break
+                else:
+                    logger.warning(f"Attempt {attempt+1} failed: {response.status_code}")
+                    if attempt < max_retries - 1:
+                        import time
+                        time.sleep(2 ** attempt)  # 指数退避
+                        
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Network error on attempt {attempt+1}: {e}")
+                if attempt < max_retries - 1:
+                    import time
+                    time.sleep(2 ** attempt)
+            except Exception as e:
+                logger.error(f"Unexpected error on attempt {attempt+1}: {e}")
+                break
+                
+        logger.error(f"Failed to add comment after {max_retries} attempts.")
+        return False
 
     def __repository_commits(self, ref_name: str = "", since: str = "", until: str = "", pre_page: int = 100,
                              page: int = 1):
         # 获取仓库提交信息
-        url = f"{urljoin(f'{self.gitlab_url}/', f'api/v4/projects/{self.project_id}/repository/commits')}?ref_name={ref_name}&since={since}&until={until}&per_page={pre_page}&page={page}"
+        url = f"{urljoin(f'{str(self.gitlab_url)}/', f'api/v4/projects/{self.project_id}/repository/commits')}?ref_name={ref_name}&since={since}&until={until}&per_page={pre_page}&page={page}"
         headers = {
-            'Private-Token': self.gitlab_token
+            'Private-Token': str(self.gitlab_token)
         }
         response = requests.get(url, headers=headers, verify=False)
         logger.debug(
@@ -260,9 +333,13 @@ class PushHandler:
 
     def repository_compare(self, before: str, after: str):
         # 比较两个提交之间的差异
-        url = f"{urljoin(f'{self.gitlab_url}/', f'api/v4/projects/{self.project_id}/repository/compare')}?from={before}&to={after}"
+        # 确保所有参数都是字符串类型
+        gitlab_url = str(self.gitlab_url)
+        project_id = str(self.project_id)
+        
+        url = f"{urljoin(f'{gitlab_url}/', f'api/v4/projects/{project_id}/repository/compare')}?from={before}&to={after}"
         headers = {
-            'Private-Token': self.gitlab_token
+            'Private-Token': str(self.gitlab_token)
         }
         response = requests.get(url, headers=headers, verify=False)
         logger.debug(
@@ -277,9 +354,9 @@ class PushHandler:
 
     def get_commit_diff(self, commit_sha: str):
         """获取单个提交的差异信息"""
-        url = f"{urljoin(f'{self.gitlab_url}/', f'api/v4/projects/{self.project_id}/repository/commits/{commit_sha}/diff')}"
+        url = f"{urljoin(f'{str(self.gitlab_url)}/', f'api/v4/projects/{self.project_id}/repository/commits/{commit_sha}/diff')}"
         headers = {
-            'Private-Token': self.gitlab_token
+            'Private-Token': str(self.gitlab_token)
         }
         response = requests.get(url, headers=headers, verify=False)
         logger.debug(

@@ -1,12 +1,6 @@
 import os
-import sqlite3
 
 import pandas as pd
-
-try:
-    import pymysql
-except ImportError:
-    pymysql = None
 
 from biz.entity.review_entity import MergeRequestReviewEntity, PushReviewEntity
 from biz.utils.db_factory import DBConnectionFactory
@@ -43,6 +37,16 @@ class ReviewService:
                                 score INTEGER,
                                 url TEXT,
                                 review_result TEXT,
+                                
+                                -- 结构化审查结果字段
+                                total_issues INTEGER DEFAULT 0,
+                                critical_issues INTEGER DEFAULT 0,
+                                high_issues INTEGER DEFAULT 0,
+                                medium_issues INTEGER DEFAULT 0,
+                                low_issues INTEGER DEFAULT 0,
+                                suggestion_issues INTEGER DEFAULT 0,
+                                estimated_time_hours REAL DEFAULT 0.0,
+                                
                                 additions INTEGER DEFAULT 0,
                                 deletions INTEGER DEFAULT 0,
                                 last_commit_id TEXT DEFAULT ''
@@ -62,6 +66,16 @@ class ReviewService:
                                 score INT,
                                 url TEXT,
                                 review_result TEXT,
+                                
+                                -- 结构化审查结果字段
+                                total_issues INT DEFAULT 0,
+                                critical_issues INT DEFAULT 0,
+                                high_issues INT DEFAULT 0,
+                                medium_issues INT DEFAULT 0,
+                                low_issues INT DEFAULT 0,
+                                suggestion_issues INT DEFAULT 0,
+                                estimated_time_hours FLOAT DEFAULT 0.0,
+                                
                                 additions INT DEFAULT 0,
                                 deletions INT DEFAULT 0,
                                 last_commit_id VARCHAR(255) DEFAULT ''
@@ -78,6 +92,16 @@ class ReviewService:
                                 commit_messages TEXT,
                                 score INTEGER,
                                 review_result TEXT,
+                                
+                                -- 结构化审查结果字段
+                                total_issues INTEGER DEFAULT 0,
+                                critical_issues INTEGER DEFAULT 0,
+                                high_issues INTEGER DEFAULT 0,
+                                medium_issues INTEGER DEFAULT 0,
+                                low_issues INTEGER DEFAULT 0,
+                                suggestion_issues INTEGER DEFAULT 0,
+                                estimated_time_hours REAL DEFAULT 0.0,
+                                
                                 additions INTEGER DEFAULT 0,
                                 deletions INTEGER DEFAULT 0
                             )
@@ -94,6 +118,16 @@ class ReviewService:
                                 commit_messages TEXT,
                                 score INT,
                                 review_result TEXT,
+                                
+                                -- 结构化审查结果字段
+                                total_issues INT DEFAULT 0,
+                                critical_issues INT DEFAULT 0,
+                                high_issues INT DEFAULT 0,
+                                medium_issues INT DEFAULT 0,
+                                low_issues INT DEFAULT 0,
+                                suggestion_issues INT DEFAULT 0,
+                                estimated_time_hours FLOAT DEFAULT 0.0,
+                                
                                 additions INT DEFAULT 0,
                                 deletions INT DEFAULT 0
                             )
@@ -148,14 +182,17 @@ class ReviewService:
                 cursor = conn.cursor()
                 cursor.execute('''
                                 INSERT INTO mr_review_log (project_name,author, source_branch, target_branch, 
-                                updated_at, commit_messages, score, url,review_result, additions, deletions, 
-                                last_commit_id)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                updated_at, commit_messages, score, url,review_result, 
+                                total_issues, critical_issues, high_issues, medium_issues, low_issues, suggestion_issues, estimated_time_hours,
+                                additions, deletions, last_commit_id)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             ''',
                                (entity.project_name, entity.author, entity.source_branch,
                                 entity.target_branch, entity.updated_at, entity.commit_messages, entity.score,
-                                entity.url, entity.review_result, entity.additions, entity.deletions,
-                                entity.last_commit_id))
+                                entity.url, entity.review_result,
+                                entity.total_issues, entity.critical_issues, entity.high_issues, entity.medium_issues,
+                                entity.low_issues, entity.suggestion_issues, entity.estimated_time_hours,
+                                entity.additions, entity.deletions, entity.last_commit_id))
                 conn.commit()
         except Exception as e:
             print(f"Error inserting review log: {e}")
@@ -220,12 +257,17 @@ class ReviewService:
             with DBConnectionFactory.get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute('''
-                                INSERT INTO push_review_log (project_name,author, branch, updated_at, commit_messages, score,review_result, additions, deletions)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                INSERT INTO push_review_log (project_name,author, branch, updated_at, commit_messages, score,review_result, 
+                                total_issues, critical_issues, high_issues, medium_issues, low_issues, suggestion_issues, estimated_time_hours,
+                                additions, deletions)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             ''',
                                (entity.project_name, entity.author, entity.branch,
                                 entity.updated_at, entity.commit_messages, entity.score,
-                                entity.review_result, entity.additions, entity.deletions))
+                                entity.review_result,
+                                entity.total_issues, entity.critical_issues, entity.high_issues, entity.medium_issues,
+                                entity.low_issues, entity.suggestion_issues, entity.estimated_time_hours,
+                                entity.additions, entity.deletions))
                 conn.commit()
         except Exception as e:
             print(f"Error inserting review log: {e}")

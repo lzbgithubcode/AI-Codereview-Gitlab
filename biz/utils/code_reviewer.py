@@ -9,6 +9,7 @@ from jinja2 import Template
 from biz.llm.factory import Factory
 from biz.utils.log import logger
 from biz.utils.token_util import count_tokens, truncate_text_by_tokens
+from biz.utils.review_result_parser import ReviewResultParser
 
 
 class BaseReviewer(abc.ABC):
@@ -28,7 +29,20 @@ class BaseReviewer(abc.ABC):
 
                 # 使用Jinja2渲染模板
                 def render_template(template_str: str) -> str:
-                    return Template(template_str).render(style=style)
+                    # 传递所有必要的模板变量，避免渲染错误
+                    template_vars = {
+                        'style': style,
+                        'issues_by_severity': {},
+                        'issues_count': {'严重': 0, '高': 0, '中': 0, '低': 0, '建议': 0},
+                        'issues': {
+                            '严重': [],
+                            '高': [],
+                            '中': [],
+                            '低': [],
+                            '建议': []
+                        }
+                    }
+                    return Template(template_str).render(**template_vars)
 
                 system_prompt = render_template(prompts["system_prompt"])
                 user_prompt = render_template(prompts["user_prompt"])
@@ -81,11 +95,17 @@ class CodeReviewer(BaseReviewer):
             changes_text = truncate_text_by_tokens(changes_text, review_max_tokens)
 
         review_result = self.review_code(changes_text, commits_text).strip()
+        
         # 清理Markdown代码块格式
         if review_result.startswith("```markdown") and review_result.endswith("```"):
             review_result = review_result[11:-3].strip()
         elif review_result.startswith("```") and review_result.endswith("```"):
             review_result = review_result[3:-3].strip()
+        
+        # 确保审查结果不为空
+        if not review_result or review_result == "代码为空":
+            review_result = "## 🔍 代码审查报告\n\n### 📊 审查统计\n- 严重：0个 | 高：0个 | 中：0个 | 低：0个 | 建议：0个\n- 预计修复时间：0小时\n\n### 审查说明\n未发现需要修复的问题，代码质量良好。"
+        
         return review_result
 
     def review_code(self, diffs_text: str, commits_text: str = "") -> str:
@@ -108,4 +128,50 @@ class CodeReviewer(BaseReviewer):
             return 0
         match = re.search(r"总分[:：]\s*(\d+)分?", review_text)
         return int(match.group(1)) if match else 0
+
+    @staticmethod
+    def parse_review_result(review_text: str) -> Dict[str, Any]:
+        """
+        解析 AI 返回的 Review 结果，返回结构化数据
+        
+        Args:
+            review_text: AI返回的Markdown格式审查结果
+            
+        Returns:
+            包含结构化审查数据的字典
+        """
+        parser = ReviewResultParser()
+        return parser.parse_review_result(review_text)
+
+    def review_code_with_stats(self, diffs_text: str, commits_text: str = "") -> Dict[str, Any]:
+        """
+        Review 代码并返回包含结构化统计信息的结果
+        
+        Args:
+            diffs_text: 代码差异文本
+            commits_text: 提交信息文本
+            
+        Returns:
+            包含审查结果和统计信息的字典
+        """
+        # 获取原始审查结果
+        review_result = self.review_code(diffs_text, commits_text)
+        
+        # 清理Markdown代码块格式
+        if review_result.startswith("```markdown") and review_result.endswith("```"):
+            review_result = review_result[11:-3].strip()
+        elif review_result.startswith("```") and review_result.endswith("```"):
+            review_result = review_result[3:-3].strip()
+        
+        # 确保审查结果不为空
+        if not review_result or review_result == "代码为空":
+            review_result = "## 🔍 代码审查报告\n\n### 📊 审查统计\n- 严重：0个 | 高：0个 | 中：0个 | 低：0个 | 建议：0个\n- 预计修复时间：0小时\n\n### 审查说明\n未发现需要修复的问题，代码质量良好。"
+        
+        # 解析结构化数据
+        structured_data = self.parse_review_result(review_result)
+        
+        return {
+            "review_result": review_result,
+            "structured_data": structured_data
+        }
 

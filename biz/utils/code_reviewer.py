@@ -81,8 +81,11 @@ class CodeReviewer(BaseReviewer):
             changes_text = truncate_text_by_tokens(changes_text, review_max_tokens)
 
         review_result = self.review_code(changes_text, commits_text).strip()
+        # 清理Markdown代码块格式
         if review_result.startswith("```markdown") and review_result.endswith("```"):
-            return review_result[11:-3].strip()
+            review_result = review_result[11:-3].strip()
+        elif review_result.startswith("```") and review_result.endswith("```"):
+            review_result = review_result[3:-3].strip()
         return review_result
 
     def review_code(self, diffs_text: str, commits_text: str = "") -> str:

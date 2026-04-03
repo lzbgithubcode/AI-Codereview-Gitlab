@@ -27,37 +27,77 @@ class ReviewService:
         try:
             with DBConnectionFactory.get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS mr_review_log (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            project_name TEXT,
-                            author TEXT,
-                            source_branch TEXT,
-                            target_branch TEXT,
-                            updated_at INTEGER,
-                            commit_messages TEXT,
-                            score INTEGER,
-                            url TEXT,
-                            review_result TEXT,
-                            additions INTEGER DEFAULT 0,
-                            deletions INTEGER DEFAULT 0,
-                            last_commit_id TEXT DEFAULT ''
-                        )
-                    ''')
-                cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS push_review_log (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            project_name TEXT,
-                            author TEXT,
-                            branch TEXT,
-                            updated_at INTEGER,
-                            commit_messages TEXT,
-                            score INTEGER,
-                            review_result TEXT,
-                            additions INTEGER DEFAULT 0,
-                            deletions INTEGER DEFAULT 0
-                        )
-                    ''')
+                # 数据库类型检查：SQLite和MySQL的语法不同
+                db_type = os.environ.get('DATABASE_TYPE', 'mysql').lower()
+                
+                if db_type == 'sqlite':
+                    cursor.execute('''
+                            CREATE TABLE IF NOT EXISTS mr_review_log (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                project_name TEXT,
+                                author TEXT,
+                                source_branch TEXT,
+                                target_branch TEXT,
+                                updated_at INTEGER,
+                                commit_messages TEXT,
+                                score INTEGER,
+                                url TEXT,
+                                review_result TEXT,
+                                additions INTEGER DEFAULT 0,
+                                deletions INTEGER DEFAULT 0,
+                                last_commit_id TEXT DEFAULT ''
+                            )
+                        ''')
+                else:
+                    # MySQL语法
+                    cursor.execute('''
+                            CREATE TABLE IF NOT EXISTS mr_review_log (
+                                id INT AUTO_INCREMENT PRIMARY KEY,
+                                project_name VARCHAR(255),
+                                author VARCHAR(255),
+                                source_branch VARCHAR(255),
+                                target_branch VARCHAR(255),
+                                updated_at BIGINT,
+                                commit_messages TEXT,
+                                score INT,
+                                url TEXT,
+                                review_result TEXT,
+                                additions INT DEFAULT 0,
+                                deletions INT DEFAULT 0,
+                                last_commit_id VARCHAR(255) DEFAULT ''
+                            )
+                        ''')
+                if db_type == 'sqlite':
+                    cursor.execute('''
+                            CREATE TABLE IF NOT EXISTS push_review_log (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                project_name TEXT,
+                                author TEXT,
+                                branch TEXT,
+                                updated_at INTEGER,
+                                commit_messages TEXT,
+                                score INTEGER,
+                                review_result TEXT,
+                                additions INTEGER DEFAULT 0,
+                                deletions INTEGER DEFAULT 0
+                            )
+                        ''')
+                else:
+                    # MySQL语法
+                    cursor.execute('''
+                            CREATE TABLE IF NOT EXISTS push_review_log (
+                                id INT AUTO_INCREMENT PRIMARY KEY,
+                                project_name VARCHAR(255),
+                                author VARCHAR(255),
+                                branch VARCHAR(255),
+                                updated_at BIGINT,
+                                commit_messages TEXT,
+                                score INT,
+                                review_result TEXT,
+                                additions INT DEFAULT 0,
+                                deletions INT DEFAULT 0
+                            )
+                        ''')
                 # 数据库类型检查：SQLite使用PRAGMA，MySQL使用初始化脚本
                 db_type = os.environ.get('DATABASE_TYPE', 'mysql').lower()
                 

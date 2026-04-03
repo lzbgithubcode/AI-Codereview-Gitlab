@@ -11,10 +11,11 @@ class BaseClient:
     def ping(self) -> bool:
         """Ping the model to check connectivity."""
         try:
-            result = self.completions(messages=[{"role": "user", "content": '请仅返回 "ok"。'}])
-            return result and result.strip() == "ok"
-        except Exception:
-            logger.error("尝试连接LLM失败， {e}")
+            # 简单的ping测试，发送一个简单的请求，只要不报错就认为连接正常
+            result = self.completions(messages=[{"role": "user", "content": "你好"}])
+            return result is not None and len(result.strip()) > 0
+        except Exception as e:
+            logger.error(f"尝试连接LLM失败: {e}")
             return False
 
     @abstractmethod

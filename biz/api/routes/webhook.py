@@ -142,9 +142,16 @@ def handle_gitlab_webhook(data):
         return jsonify(
             {'message': f'Request received(object_kind={object_kind}), will process asynchronously.'}), 200
     else:
-        error_message = f'Only merge_request and push events are supported (both Webhook and System Hook), but received: {object_kind}.'
-        logger.error(error_message)
-        return jsonify(error_message), 400
+        # 对于其他事件类型（如note事件），记录信息但不抛出错误
+        if object_kind in ['note', 'comment']:
+            # 这是AI系统发布评论后GitLab的回传事件，不需要处理
+            logger.info(f'收到评论事件 (object_kind={object_kind})，这是AI系统发布评论后的正常回传，无需处理。')
+            return jsonify({'message': f'评论事件已收到并忽略 (object_kind={object_kind})'}), 200
+        else:
+            # 对于其他未知事件类型，记录警告但不阻断服务
+            warning_message = f'收到不支持的事件类型: {object_kind}。系统仅处理merge_request和push事件。'
+            logger.warning(warning_message)
+            return jsonify({'message': warning_message}), 200
 
 
 def handle_gitea_webhook(event_type, data):

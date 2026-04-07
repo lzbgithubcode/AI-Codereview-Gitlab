@@ -10,6 +10,7 @@ from biz.platforms.gitea.webhook_handler import filter_changes as filter_gitea_c
     PushHandler as GiteaPushHandler
 from biz.service.review_service import ReviewService
 from biz.utils.code_reviewer import CodeReviewer
+from biz.utils.code_parser import GitDiffParser
 from biz.utils.im import notifier
 from biz.utils.log import logger
 
@@ -51,8 +52,13 @@ def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gi
 
             if len(changes) > 0:
                 commits_text = ';'.join(commit.get('message', '').strip() for commit in commits)
-                # 使用新的结构化审查方法
-                review_data = CodeReviewer().review_code_with_stats(str(changes), commits_text)
+                
+                # 使用原始GitLab diff格式，确保AI可以准确定位行号
+                diff_text = str(changes)
+                logger.info(f"传递给AI的diff内容长度: {len(diff_text)} 字符")
+                
+                # 使用新的结构化审查方法，传递原始diff格式
+                review_data = CodeReviewer().review_code_with_stats(diff_text, commits_text)
                 review_result = review_data['review_result']
                 structured_data = review_data['structured_data']
                 score = CodeReviewer.parse_review_score(review_text=review_result)
@@ -62,7 +68,48 @@ def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gi
 
         # 将review结果提交到Gitlab的 notes（始终执行，无论是否启用Push审查）
         if review_result:
-            handler.add_push_notes(f'AI代码审查结果: \n{review_result}')
+            # 构建详细的评论内容
+            project_name = webhook_data['project']['name']
+            author = webhook_data['user_username']
+            branch = webhook_data.get('ref', '').replace('refs/heads/', '')
+            
+            # 构建问题统计信息
+            total_issues = structured_data.get('total_issues', 0)
+            critical_issues = structured_data.get('critical_issues', 0)
+            high_issues = structured_data.get('high_issues', 0)
+            medium_issues = structured_data.get('medium_issues', 0)
+            low_issues = structured_data.get('low_issues', 0)
+            suggestion_issues = structured_data.get('suggestion_issues', 0)
+            
+            # 构建详细的评论格式
+            comment_content = f"""🤖 **AI代码审查报告**
+
+**项目信息**
+- 📁 项目名称: {project_name}
+- 👤 提交人: {author}
+- 🌿 提交分支: {branch}
+- 📊 代码变更: +{additions} / -{deletions}
+
+**问题统计**
+| 严重程度 | 数量 |
+|---------|------|
+| 🔴 严重 | {critical_issues} |
+| 🟠 高 | {high_issues} |
+| 🟡 中 | {medium_issues} |
+| 🔵 低 | {low_issues} |
+| 💡 建议 | {suggestion_issues} |
+| **总计** | **{total_issues}** |
+
+**详细问题列表**
+
+---
+
+{review_result}
+
+---
+*由AI代码审查系统自动生成*"""
+            
+            handler.add_push_notes(comment_content)
         else:
             logger.info('没有需要添加的评论内容')
 
@@ -166,8 +213,50 @@ def handle_merge_request_event(webhook_data: dict, gitlab_token: str, gitlab_url
         review_result = review_data['review_result']
         structured_data = review_data['structured_data']
 
+        # 构建详细的评论内容
+        project_name = webhook_data['project']['name']
+        author = webhook_data['user']['username']
+        source_branch = webhook_data['object_attributes']['source_branch']
+        target_branch = webhook_data['object_attributes']['target_branch']
+        
+        # 构建问题统计信息
+        total_issues = structured_data.get('total_issues', 0)
+        critical_issues = structured_data.get('critical_issues', 0)
+        high_issues = structured_data.get('high_issues', 0)
+        medium_issues = structured_data.get('medium_issues', 0)
+        low_issues = structured_data.get('low_issues', 0)
+        suggestion_issues = structured_data.get('suggestion_issues', 0)
+        
+        # 构建详细的评论格式
+        comment_content = f"""🤖 **AI代码审查报告**
+
+**合并请求信息**
+- 📁 项目名称: {project_name}
+- 👤 提交人: {author}
+- 🌿 源分支: {source_branch} → 目标分支: {target_branch}
+- 📊 代码变更: +{additions} / -{deletions}
+
+**问题统计**
+| 严重程度 | 数量 |
+|---------|------|
+| 🔴 严重 | {critical_issues} |
+| 🟠 高 | {high_issues} |
+| 🟡 中 | {medium_issues} |
+| 🔵 低 | {low_issues} |
+| 💡 建议 | {suggestion_issues} |
+| **总计** | **{total_issues}** |
+
+**详细问题列表**
+
+---
+
+{review_result}
+
+---
+*由AI代码审查系统自动生成*"""
+        
         # 将review结果提交到Gitlab的 notes
-        handler.add_merge_request_notes(f'Auto Review Result: \n{review_result}')
+        handler.add_merge_request_notes(comment_content)
 
         # dispatch merge_request_reviewed event
         event_manager['merge_request_reviewed'].send(
@@ -201,6 +290,12 @@ def handle_merge_request_event(webhook_data: dict, gitlab_token: str, gitlab_url
         error_message = f'AI Code Review 服务出现未知错误: {str(e)}\n{traceback.format_exc()}'
         notifier.send_notification(content=error_message)
         logger.error('出现未知错误: %s', error_message)
+
+
+
+
+
+
 
 def handle_github_push_event(webhook_data: dict, github_token: str, github_url: str, github_url_slug: str):
     push_review_enabled = os.environ.get('PUSH_REVIEW_ENABLED', '0') == '1'
@@ -482,3 +577,9 @@ def handle_gitea_pull_request_event(webhook_data: dict, gitea_token: str, gitea_
         error_message = f'AI Code Review 服务出现未知错误: {str(e)}\n{traceback.format_exc()}'
         notifier.send_notification(content=error_message)
         logger.error('出现未知错误: %s', error_message)
+
+
+
+
+
+

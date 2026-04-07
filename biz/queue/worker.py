@@ -55,7 +55,16 @@ def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gi
                 
                 # 使用原始GitLab diff格式，确保AI可以准确定位行号
                 diff_text = str(changes)
-                logger.info(f"传递给AI的diff内容长度: {len(diff_text)} 字符")
+                
+                # 调试：打印可读性格式的diff内容
+                logger.info("=== 传递给AI的diff内容（格式化显示）===")
+                for i, change in enumerate(changes):
+                    file_path = change.get('new_path', 'unknown')
+                    diff_content = change.get('diff', '')
+                    logger.info(f"文件 {i+1}: {file_path}")
+                    logger.info(f"Diff内容:\n{diff_content}")
+                    logger.info("-" * 50)
+                logger.info(f"diff总长度: {len(diff_text)} 字符")
                 
                 # 使用新的结构化审查方法，传递原始diff格式
                 review_data = CodeReviewer().review_code_with_stats(diff_text, commits_text)

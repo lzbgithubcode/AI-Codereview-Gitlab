@@ -10,6 +10,7 @@ from biz.llm.factory import Factory
 from biz.utils.log import logger
 from biz.utils.token_util import count_tokens, truncate_text_by_tokens
 from biz.utils.review_result_parser import ReviewResultParser
+from biz.utils.prompt_validator import PromptValidator
 
 
 class BaseReviewer(abc.ABC):
@@ -18,6 +19,7 @@ class BaseReviewer(abc.ABC):
     def __init__(self, prompt_key: str):
         self.client = Factory().getClient()
         self.prompts = self._load_prompts(prompt_key, os.getenv("REVIEW_STYLE", "professional"))
+        self.optimization_config = self._load_optimization_config()
 
     def _load_prompts(self, prompt_key: str, style="professional") -> Dict[str, Any]:
         """加载提示词配置"""
@@ -29,6 +31,25 @@ class BaseReviewer(abc.ABC):
 
                 # 使用Jinja2渲染模板
                 def render_template(template_str: str) -> str:
+                    # 创建示例issue对象，用于模板渲染测试
+                    example_issue = {
+                        'title': '示例问题标题',
+                        'severity': '低',
+                        'category': '代码规范',
+                        'location': {'file': 'src/example.py', 'line': 1},
+                        'impact_scope': '仅当前函数',
+                        'confidence': '高 (90%+)',
+                        'estimated_time': '5分钟',
+                        'action': '建议修复',
+                        'description': '这是示例问题描述',
+                        'language': 'python',
+                        'code_snippet': 'print("hello")',
+                        'explanation': '这是问题解释',
+                        'suggestion': '这是修改建议',
+                        'before_code': 'print("hello")',
+                        'after_code': 'print("Hello, World!")'
+                    }
+                    
                     # 传递所有必要的模板变量，避免渲染错误
                     template_vars = {
                         'style': style,
@@ -42,7 +63,9 @@ class BaseReviewer(abc.ABC):
                             '建议': []
                         },
                         'total_issues': 0,
-                        'estimated_time_hours': 0.0
+                        'estimated_time_hours': 0.0,
+                        # 提供示例issue用于循环测试
+                        'issue': example_issue
                     }
                     return Template(template_str).render(**template_vars)
 
@@ -56,13 +79,100 @@ class BaseReviewer(abc.ABC):
         except (FileNotFoundError, KeyError, yaml.YAMLError) as e:
             logger.error(f"加载提示词配置失败: {e}")
             raise Exception(f"提示词配置加载失败: {e}")
+    
+    def _load_optimization_config(self) -> Dict[str, Any]:
+        """加载优化配置"""
+        config_file = "conf/ai_prompt_optimization.yml"
+        try:
+            with open(config_file, "r", encoding="utf-8") as file:
+                return yaml.safe_load(file)
+        except (FileNotFoundError, yaml.YAMLError) as e:
+            logger.warning(f"加载优化配置失败，使用默认配置: {e}")
+            # 返回默认配置
+            return {
+                "quality_scoring": {
+                    "thresholds": {"acceptable": 60}
+                },
+                "retry_config": {
+                    "max_retries": 3
+                }
+            }
 
     def call_llm(self, messages: List[Dict[str, Any]]) -> str:
-        """调用 LLM 进行代码审核"""
-        logger.info(f"向 AI 发送代码 Review 请求, messages: {messages}")
-        review_result = self.client.completions(messages=messages)
-        logger.info(f"收到 AI 返回结果: {review_result}")
-        return review_result
+        """调用 LLM 进行代码审核，包含格式验证和重试机制"""
+        max_retries = 3
+        retry_count = 0
+        
+        # 验证提示格式
+        validator = PromptValidator()
+        prompt_validation = validator.validate_prompt_format(messages[1]["content"])
+        
+        if prompt_validation["warnings"]:
+            logger.warning(f"提示格式警告: {prompt_validation['warnings']}")
+        
+        while retry_count < max_retries:
+            try:
+                logger.info(f"向 AI 发送代码 Review 请求 (第{retry_count + 1}次尝试)")
+                review_result = self.client.completions(messages=messages)
+                logger.info(f"收到 AI 返回结果，长度: {len(review_result)} 字符")
+                
+                # 验证AI响应质量
+                response_validation = validator.validate_ai_response(review_result)
+                
+                if response_validation["valid"] and response_validation["quality_score"] >= 60:
+                    logger.info(f"AI响应验证通过，质量分数: {response_validation['quality_score']}")
+                    return review_result
+                else:
+                    logger.warning(f"AI响应验证失败，质量分数: {response_validation['quality_score']}")
+                    
+                    # 生成改进建议
+                    suggestions = validator.generate_improvement_suggestions(response_validation)
+                    logger.warning(f"改进建议: {suggestions}")
+                    
+                    # 如果是最后一次尝试，返回降级结果
+                    if retry_count == max_retries - 1:
+                        logger.error("达到最大重试次数，返回降级结果")
+                        return self._get_fallback_response()
+                    
+                    # 增加重试计数器
+                    retry_count += 1
+                    logger.info(f"准备第{retry_count + 1}次重试...")
+                    
+            except Exception as e:
+                logger.error(f"调用AI失败: {e}")
+                retry_count += 1
+                
+                if retry_count == max_retries:
+                    logger.error("达到最大重试次数，返回降级结果")
+                    return self._get_fallback_response()
+        
+        # 理论上不会执行到这里
+        return self._get_fallback_response()
+    
+    def _get_fallback_response(self) -> str:
+        """获取降级响应"""
+        fallback_response = """## 🔍 代码审查报告
+
+### 📊 审查统计
+- 严重：0个 | 高：0个 | 中：0个 | 低：0个 | 建议：0个
+- 预计修复时间：0小时
+
+### 审查说明
+AI审查服务暂时不可用，请人工检查代码质量。
+
+<!-- JSON_DATA_START -->
+{
+  "total_issues": 0,
+  "critical_issues": 0,
+  "high_issues": 0,
+  "medium_issues": 0,
+  "low_issues": 0,
+  "suggestion_issues": 0,
+  "estimated_time_hours": 0.0,
+  "issues": []
+}
+<!-- JSON_DATA_END -->"""
+        return fallback_response
 
     @abc.abstractmethod
     def review_code(self, *args, **kwargs) -> str:

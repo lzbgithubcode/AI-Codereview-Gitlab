@@ -1,0 +1,147 @@
+# AI提示工程优化配置
+# 用于强化AI输出格式控制和质量管理
+
+# 格式控制配置
+format_control:
+  # 格式分隔符配置
+  separators:
+    json_start: "<!-- JSON_DATA_START -->"
+    json_end: "<!-- JSON_DATA_END -->"
+    
+  # 严格禁止的内容
+  forbidden_patterns:
+    - "[a-f0-9]{8,}"  # 随机小写十六进制字符串
+    - "[A-F0-9]{8,}"  # 随机大写十六进制字符串
+    - "\{\{.*?\}\}"   # 未处理的模板变量
+    - "```json"        # 错误的代码块标记
+    
+  # 必需字段检查
+  required_fields:
+    markdown:
+      - "问题"
+      - "位置"
+      - "严重程度"
+      - "代码片段"
+    json:
+      - "total_issues"
+      - "critical_issues"
+      - "high_issues"
+      - "medium_issues"
+      - "low_issues"
+      - "suggestion_issues"
+      - "estimated_time_hours"
+      - "issues"
+
+# 质量评分配置
+quality_scoring:
+  # 基础分数
+  base_score: 100
+  
+  # 扣分规则
+  penalties:
+    format_errors: 20  # 格式错误
+    format_warnings: 5  # 格式警告
+    content_errors: 15  # 内容错误
+    content_warnings: 3  # 内容警告
+    
+  # 加分规则
+  bonuses:
+    use_emojis: 5       # 使用表情符号
+    use_code_blocks: 10  # 使用代码块
+    use_tables: 5       # 使用表格
+    
+  # 质量阈值
+  thresholds:
+    excellent: 90
+    good: 75
+    acceptable: 60
+    poor: 40
+
+# 重试机制配置
+retry_config:
+  max_retries: 3
+  retry_delay: 1  # 秒
+  
+  # 触发重试的条件
+  retry_conditions:
+    quality_score_below: 60
+    format_errors_present: true
+    missing_required_fields: true
+    
+  # 重试策略
+  strategies:
+    - "enhance_prompt_strictness"
+    - "add_format_examples"
+    - "simplify_requirements"
+
+# 降级处理配置
+fallback_config:
+  # 降级响应模板
+  fallback_response: |
+    ## 🔍 代码审查报告
+
+    ### 📊 审查统计
+    - 严重：0个 | 高：0个 | 中：0个 | 低：0个 | 建议：0个
+    - 预计修复时间：0小时
+
+    ### 审查说明
+    AI审查服务暂时不可用，请人工检查代码质量。
+
+    <!-- JSON_DATA_START -->
+    {
+      "total_issues": 0,
+      "critical_issues": 0,
+      "high_issues": 0,
+      "medium_issues": 0,
+      "low_issues": 0,
+      "suggestion_issues": 0,
+      "estimated_time_hours": 0.0,
+      "issues": []
+    }
+    <!-- JSON_DATA_END -->
+    
+  # 降级触发条件
+  trigger_conditions:
+    - "max_retries_exceeded"
+    - "ai_service_unavailable"
+    - "critical_format_errors"
+
+# 提示工程优化策略
+prompt_optimization:
+  # 格式强化策略
+  format_reinforcement:
+    - "explicit_format_requirements"
+    - "strict_forbidden_rules"
+    - "detailed_examples"
+    - "step_by_step_instructions"
+    
+  # 内容质量策略
+  content_quality:
+    - "required_15_elements"
+    - "position_accuracy"
+    - "specific_suggestions"
+    - "code_examples"
+    
+  # 错误预防策略
+  error_prevention:
+    - "template_variable_handling"
+    - "json_structure_validation"
+    - "markdown_syntax_check"
+
+# 监控和日志配置
+monitoring:
+  # 日志级别
+  log_level: "INFO"
+  
+  # 监控指标
+  metrics:
+    - "ai_response_quality_score"
+    - "format_validation_success_rate"
+    - "retry_count"
+    - "fallback_usage"
+    
+  # 告警阈值
+  alerts:
+    quality_score_below: 60
+    retry_rate_above: 0.3
+    fallback_rate_above: 0.1

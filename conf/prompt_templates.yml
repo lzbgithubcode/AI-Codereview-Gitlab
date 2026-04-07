@@ -5,35 +5,79 @@ code_review_prompt:
     ## 审查要求：
     1. 按严重程度分类问题：严重、高、中、低、建议
     2. 为每个问题提供详细的结构化信息
-    3. 使用标准Markdown格式输出
+    3. 使用标准Markdown格式输出，支持GitLab评论显示
     4. 保持{{ style }}风格
+    5. 同时输出JSON格式的解析数据，便于数据库存储
     
     ## 输出格式要求：
     请严格按照以下结构化模板输出，确保每个问题包含完整的要素：
     
     ## 🔍 代码审查报告
     
-    ### 📊 审查统计
-    - 严重：[数量]个 | 高：[数量]个 | 中：[数量]个 | 低：[数量]个 | 建议：[数量]个
-    - 预计修复时间：[时间]小时
+    ### 📊 审查概览
+    | 维度 | 状态 | 说明 |
+    |------|------|------|
+    | 安全性 | {% if issues_count['严重'] > 0 or issues_count['高'] > 0 %}⚠️ 需关注{% else %}✅ 良好{% endif %} | 发现{{ issues_count['严重'] + issues_count['高'] }}个安全风险 |
+    | 性能 | {% if issues_count['中'] > 0 %}🟡 一般{% else %}✅ 良好{% endif %} | 发现{{ issues_count['中'] }}个性能问题 |
+    | 规范性 | {% if issues_count['低'] > 0 %}🟡 一般{% else %}✅ 良好{% endif %} | 发现{{ issues_count['低'] }}个规范问题 |
+    | 优化建议 | {% if issues_count['建议'] > 0 %}💡 可优化{% else %}✅ 无建议{% endif %} | {{ issues_count['建议'] }}个优化建议 |
     
-    ### 问题列表
+    ### 🎯 快速修复指南
+    <details>
+    <summary>📋 点击展开修复优先级列表</summary>
+    
+    #### 🔴 必须立即修复 ({{ issues_count['严重'] }}个)
+    {% for issue in issues['严重'] %}
+    - [ ] {{ issue.title }} - `{{ issue.location.file }}:{{ issue.location.line }}`
+    {% endfor %}
+    
+    #### 🟠 建议本周修复 ({{ issues_count['高'] }}个)
+    {% for issue in issues['高'] %}
+    - [ ] {{ issue.title }} - `{{ issue.location.file }}:{{ issue.location.line }}`
+    {% endfor %}
+    
+    #### 🟡 可延期修复 ({{ issues_count['中'] }}个)
+    {% for issue in issues['中'] %}
+    - [ ] {{ issue.title }} - `{{ issue.location.file }}:{{ issue.location.line }}`
+    {% endfor %}
+    
+    #### 🟢 优化建议 ({{ issues_count['低'] + issues_count['建议'] }}个)
+    {% for issue in issues['低'] %}
+    - [ ] {{ issue.title }} - `{{ issue.location.file }}:{{ issue.location.line }}`
+    {% endfor %}
+    {% for issue in issues['建议'] %}
+    - [ ] {{ issue.title }} - `{{ issue.location.file }}:{{ issue.location.line }}`
+    {% endfor %}
+    </details>
+    
+    ### 📊 详细统计
+    - **总问题数**: {{ total_issues }}个
+    - **严重程度分布**: 严重:{{ issues_count['严重'] }} | 高:{{ issues_count['高'] }} | 中:{{ issues_count['中'] }} | 低:{{ issues_count['低'] }} | 建议:{{ issues_count['建议'] }}
+    - **预计修复时间**: {{ estimated_time_hours }}小时
+    
+    ### 🔗 问题详情
     
     {% for severity in ['严重', '高', '中', '低', '建议'] %}
     {% if issues_count[severity] > 0 %}
     
-    ### {% if severity == '严重' %}🔴{% elif severity == '高' %}🟠{% elif severity == '中' %}🟡{% elif severity == '低' %}🟢{% else %}⚪{% endif %} {{ severity }}级别问题
+    <details>
+    <summary>
+    {% if severity == '严重' %}🔴{% elif severity == '高' %}🟠{% elif severity == '中' %}🟡{% elif severity == '低' %}🟢{% else %}⚪{% endif %} {{ severity }}级别问题 ({{ issues_count[severity] }}个)
+    </summary>
     
     {% for issue in issues[severity] %}
+    
     #### 问题 #{{ loop.index }}：{{ issue.title }}
     
-    - **位置**：`{{ issue.location.file }}` 第 {{ issue.location.line }} 行
-    - **严重程度**：{{ issue.severity }}
-    - **问题分类**：{{ issue.category }}
-    - **影响范围**：{{ issue.impact_scope }}
-    - **置信度**：{{ issue.confidence }}
-    - **修复工作量**：{{ issue.estimated_time }}
-    - **处理建议**：{{ issue.action }}
+    | 属性 | 内容 |
+    |------|------|
+    | 📍 位置 | `{{ issue.location.file }}` 第 {{ issue.location.line }} 行 |
+    | ⚠️ 严重程度 | {{ issue.severity }} |
+    | 🏷️ 问题分类 | {{ issue.category }} |
+    | 📈 影响范围 | {{ issue.impact_scope }} |
+    | 🎯 置信度 | {{ issue.confidence }} |
+    | ⏱️ 修复工作量 | {{ issue.estimated_time }} |
+    | 💡 处理建议 | {{ issue.action }} |
     
     **🔍 问题描述**  
     {{ issue.description }}
@@ -62,11 +106,57 @@ code_review_prompt:
     
     ---
     {% endfor %}
+    </details>
     {% endif %}
     {% endfor %}
     
-    ### 审查说明
-    根据实际情况填写审查总结，保持{{ style }}风格。
+    ### 📚 最佳实践参考
+    - **安全规范**: OWASP Top 10 2023
+    - **性能优化**: 代码性能最佳实践
+    - **编码规范**: 团队编码标准
+    
+    ### 📝 审查总结
+    本次审查发现了{{ total_issues }}个问题，建议按修复优先级逐步处理。
+    
+    ---
+    
+    <!-- JSON_DATA_START -->
+    {
+      "total_issues": {{ total_issues }},
+      "critical_issues": {{ issues_count['严重'] }},
+      "high_issues": {{ issues_count['高'] }},
+      "medium_issues": {{ issues_count['中'] }},
+      "low_issues": {{ issues_count['低'] }},
+      "suggestion_issues": {{ issues_count['建议'] }},
+      "estimated_time_hours": {{ estimated_time_hours }},
+      "issues": [
+        {% for severity in ['严重', '高', '中', '低', '建议'] %}
+        {% for issue in issues[severity] %}
+        {
+          "title": "{{ issue.title }}",
+          "severity": "{{ issue.severity }}",
+          "category": "{{ issue.category }}",
+          "location": {
+            "file": "{{ issue.location.file }}",
+            "line": {{ issue.location.line }}
+          },
+          "impact_scope": "{{ issue.impact_scope }}",
+          "confidence": "{{ issue.confidence }}",
+          "estimated_time": "{{ issue.estimated_time }}",
+          "action": "{{ issue.action }}",
+          "description": "{{ issue.description }}",
+          "language": "{{ issue.language }}",
+          "code_snippet": "{{ issue.code_snippet }}",
+          "explanation": "{{ issue.explanation }}",
+          "suggestion": "{{ issue.suggestion }}",
+          "before_code": "{{ issue.before_code }}",
+          "after_code": "{{ issue.after_code }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+        {% endfor %}
+      ]
+    }
+    <!-- JSON_DATA_END -->
 
   user_prompt: |-
     请对以下GitLab代码提交进行结构化审查。请严格按照以下要求分析：
@@ -81,26 +171,32 @@ code_review_prompt:
     
     ## 审查要求（必须遵守）
     
-    ### 1. 要素完整性
-    每个问题必须包含以下12个要素：
-    1. **位置**：文件路径（如未提供则标注"未知文件"）+ 精确行号或≈行号
-    2. **代码片段**：摘出有问题的原始代码（保持缩进）
-    3. **严重程度**：从 `严重` / `高` / `中` / `低` / `建议` 中选择
-    4. **问题分类**：如 `安全漏洞`、`空指针风险`、`资源泄露`、`性能问题`等
-    5. **问题解释**：1-3句话解释为什么是问题，什么情况下触发
-    6. **修改建议**：清晰的解决步骤，优先推荐最佳实践
-    7. **修改示例**：提供 **Before/After** 代码对比
-    8. **影响范围**：`仅当前函数` / `影响调用方` / `影响全局状态`等
-    9. **置信度**：`高 (90%+)` / `中 (60%-90%)` / `低 (<60%)`
-    10. **修复工作量**：预计时间范围
-    11. **处理建议**：`必须修复（阻断合并）` / `建议修复` / `可选优化`等
-    12. **相关规范**：如 OWASP、团队编码规范链接或规则名称
+    ### 1. 要素完整性（15个核心要素）
+    每个问题必须包含以下15个要素：
+    1. **标题**：简洁明了的问题标题
+    2. **位置**：文件路径 + 精确行号（如未提供则标注"未知文件"）
+    3. **代码片段**：摘出有问题的原始代码（保持缩进）
+    4. **严重程度**：从 `严重` / `高` / `中` / `低` / `建议` 中选择
+    5. **问题分类**：如 `安全漏洞`、`空指针风险`、`资源泄露`、`性能问题`等
+    6. **问题描述**：详细描述问题现象
+    7. **问题解释**：1-3句话解释为什么是问题，什么情况下触发
+    8. **修改建议**：清晰的解决步骤，优先推荐最佳实践
+    9. **修改示例**：提供 **Before/After** 代码对比
+    10. **影响范围**：`仅当前函数` / `影响调用方` / `影响全局状态`等
+    11. **置信度**：`高 (90%+)` / `中 (60%-90%)` / `低 (<60%)`
+    12. **修复工作量**：预计时间范围（S/M/L/XL）
+    13. **处理建议**：`必须修复（阻断合并）` / `建议修复` / `可选优化`等
+    14. **相关规范**：如 OWASP、团队编码规范链接或规则名称
+    15. **编程语言**：代码对应的编程语言
     
-    ### 2. 附加约束
+    ### 2. 输出格式要求
+    - **Markdown格式**：使用标准Markdown，确保GitLab评论中正确显示
+    - **JSON数据**：在报告末尾添加结构化JSON数据，便于数据库存储
+    - **可读性**：使用表情符号、表格、折叠区域提升可读性
+    - **条理性**：按严重程度分类，提供快速导航和修复优先级
+    
+    ### 3. 附加约束
     - 如果问题多次出现，聚合为一条，列出所有出现点（最多3个）
     - 禁止模糊批评，必须给出具体原因和可执行方案
     - 低置信度问题必须明确提示"请人工确认"
     - 若只提供代码片段，推断文件类型并注明"基于代码片段分析"
-    
-    ### 3. 输出格式
-    必须使用标准化的Markdown表格格式，确保在GitLab中正确显示。

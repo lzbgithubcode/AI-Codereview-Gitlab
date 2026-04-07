@@ -40,7 +40,9 @@ class BaseReviewer(abc.ABC):
                             '中': [],
                             '低': [],
                             '建议': []
-                        }
+                        },
+                        'total_issues': 0,
+                        'estimated_time_hours': 0.0
                     }
                     return Template(template_str).render(**template_vars)
 

@@ -1,0 +1,16 @@
+2026-04-07 14:08:42,732 - INFO - config_checker.py:check_config:70 - 开始检查配置项...
+2026-04-07 14:08:42,733 - INFO - config_checker.py:check_env_vars:37 - 所有必要的环境变量均已设置。
+2026-04-07 14:08:42,733 - INFO - config_checker.py:check_llm_provider:58 - LLM 供应商 ollama 的配置项已设置。
+2026-04-07 14:08:42,744 - INFO - config_checker.py:check_llm_connectivity:62 - 正在检查 LLM 供应商的连接...
+2026-04-07 14:08:45,184 - INFO - HTTP Request: POST http://192.168.18.111:11434/api/chat "HTTP/1.1 200 OK"
+2026-04-07 14:08:45,185 - INFO - config_checker.py:check_llm_connectivity:64 - LLM 可以连接成功。
+2026-04-07 14:08:45,185 - INFO - config_checker.py:check_config:74 - 配置项检查完成。
+2026-04-07 14:08:45,186 - INFO - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-04-07 14:08:45,186 - INFO - Added job "daily_report_task" to job store "default"
+2026-04-07 14:08:45,186 - INFO - Scheduler started
+2026-04-07 14:08:45,186 - INFO - scheduler.py:setup_scheduler:38 - Scheduler started successfully.
+ * Serving Flask app 'biz.api'
+ * Debug mode: off
+Address already in use
+Port 5002 is in use by another program. Either identify and stop that program, or start the server with a different port.
+2026-04-07 14:08:45,187 - INFO - Scheduler has been shut down

@@ -1,6 +1,11 @@
 import logging
 import os
+from dotenv import load_dotenv
 from logging.handlers import RotatingFileHandler
+
+# 加载环境变量（兼容正式环境使用 .env.dist）
+env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+load_dotenv(env_file)
 
 # 自定义 Logger 类，重写 warn 和 error 方法
 class CustomLogger(logging.Logger):

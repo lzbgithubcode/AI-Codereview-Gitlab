@@ -3,8 +3,13 @@ Webhook 路由模块
 """
 import json
 import os
+from dotenv import load_dotenv
 from urllib.parse import urlparse
 from flask import Blueprint, request, jsonify
+
+# 加载环境变量（兼容正式环境使用 .env.dist）
+env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+load_dotenv(env_file)
 
 from biz.platforms.gitlab.webhook_handler import slugify_url
 from biz.queue.worker import (
@@ -113,7 +118,7 @@ def handle_gitlab_webhook(data):
     
     # 如果gitlab_token为空，返回错误
     if not gitlab_token:
-        return jsonify({'message': 'Missing GitLab access token'}), 400
+        return jsonify({'message': '缺少 GitLab access token'}), 400
 
     # 确保所有参数都是字符串类型，避免bytes类型问题
     gitlab_url = str(gitlab_url).strip()
@@ -121,11 +126,11 @@ def handle_gitlab_webhook(data):
     gitlab_url_slug = slugify_url(gitlab_url)
     
     # 添加调试日志，确认配置正确
-    logger.info(f'GitLab配置 - URL: {gitlab_url}, Token: {gitlab_token[:10]}...')
+    logger.info(f'GitLab配置 - URL: {gitlab_url}, Token大小: {gitlab_token[:10]}...')
 
     # 打印整个payload数据，或根据需求进行处理
-    logger.info(f'Received event: {object_kind}')
-    logger.info(f'Payload: {json.dumps(data)}')
+    logger.info(f'接收到的事件 event: {object_kind}')
+    logger.info(f'git获取到的数据: {json.dumps(data)}')
 
     # 处理Merge Request Hook
     if object_kind == "merge_request":

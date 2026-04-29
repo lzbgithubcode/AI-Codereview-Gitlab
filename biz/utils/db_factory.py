@@ -3,9 +3,14 @@
 支持SQLite和MySQL两种数据库，默认使用MySQL
 """
 import os
+from dotenv import load_dotenv
 import sqlite3
 import logging
 from contextlib import contextmanager
+
+# 加载环境变量（兼容正式环境使用 .env.dist）
+env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+load_dotenv(env_file)
 
 try:
     import pymysql

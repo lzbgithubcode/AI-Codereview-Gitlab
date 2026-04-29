@@ -120,6 +120,7 @@ class BranchReviewFunc(LLMReviewFunc):
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
-    load_dotenv("conf/.env")
+    env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+    load_dotenv(env_file)
     func = BranchReviewFunc()
     func.process()

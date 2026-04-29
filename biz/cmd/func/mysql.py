@@ -166,8 +166,10 @@ class MySQLReviewFunc(LLMReviewFunc):
 
 
 if __name__ == "__main__":
+    import os
     from dotenv import load_dotenv
 
-    load_dotenv("conf/.env")
+    env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+    load_dotenv(env_file)
     func = MySQLReviewFunc()
     func.process()

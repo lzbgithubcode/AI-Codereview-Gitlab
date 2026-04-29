@@ -1,10 +1,15 @@
 import abc
 import os
+from dotenv import load_dotenv
 import re
 from typing import Dict, Any, List
 
 import yaml
 from jinja2 import Template
+
+# 加载环境变量（兼容正式环境使用 .env.dist）
+env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+load_dotenv(env_file)
 
 from biz.llm.factory import Factory
 from biz.utils.log import logger
@@ -111,9 +116,11 @@ class BaseReviewer(abc.ABC):
         # 验证提示格式
         validator = PromptValidator()
         prompt_validation = validator.validate_prompt_format(messages[1]["content"])
-        
+       
         if prompt_validation["warnings"]:
             logger.warning(f"提示格式警告: {prompt_validation['warnings']}")
+        
+        logger.info(f"向 AI 发送代码提示词: {messages[1]["content"]} ")
         
         while retry_count < max_retries:
             try:

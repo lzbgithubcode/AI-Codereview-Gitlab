@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 from biz.llm.factory import Factory
 from biz.utils.log import logger
 
-# 指定环境变量文件路径
-ENV_FILE_PATH = "conf/.env"
-load_dotenv(ENV_FILE_PATH)
+# 加载环境变量（兼容正式环境使用 .env.dist）
+env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+load_dotenv(env_file)
 
 
 REQUIRED_ENV_VARS = [

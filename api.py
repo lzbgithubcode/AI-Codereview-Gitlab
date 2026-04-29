@@ -1,12 +1,12 @@
 """
 API 服务主程序入口
 """
+import os
 from dotenv import load_dotenv
 
-# 必须在其他导入之前加载环境变量
-load_dotenv("conf/.env")
-
-import os
+# 必须在其他导入之前加载环境变量（兼容正式环境使用 .env.dist）
+env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+load_dotenv(env_file)
 
 from biz.api import api_app, init_app
 from biz.api.scheduler import setup_scheduler

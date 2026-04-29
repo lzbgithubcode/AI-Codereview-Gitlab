@@ -1,6 +1,11 @@
 import os
 import re
 import time
+from dotenv import load_dotenv
+
+# 加载环境变量（兼容正式环境使用 .env.dist）
+env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+load_dotenv(env_file)
 
 import requests
 import fnmatch

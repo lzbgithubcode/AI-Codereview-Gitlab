@@ -222,7 +222,7 @@ class PushHandler:
         # 增强调试日志，显示webhook数据结构和提取结果
         logger.info(f"Webhook数据键值: {list(self.webhook_data.keys())}")
         if 'project' in self.webhook_data:
-            logger.info(f"project对象内容: {self.webhook_data.get('project', {})}")
+            logger.info(f"获取project项目内容: {self.webhook_data.get('project', {})}")
         
         # 确保project_id有值，避免None导致的URL构造错误
         if self.project_id is None:

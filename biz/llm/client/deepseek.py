@@ -1,5 +1,10 @@
 import os
 from typing import Dict, List, Optional
+from dotenv import load_dotenv
+
+# 加载环境变量（兼容正式环境使用 .env.dist）
+env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+load_dotenv(env_file)
 
 from openai import OpenAI
 

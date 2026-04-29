@@ -1,7 +1,11 @@
 import requests
 import os
+from dotenv import load_dotenv
 from biz.utils.log import logger
 
+# 加载环境变量（兼容正式环境使用 .env.dist）
+env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+load_dotenv(env_file)
 
 class FeishuNotifier:
     def __init__(self, webhook_url=None):

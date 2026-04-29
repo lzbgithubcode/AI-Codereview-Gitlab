@@ -30,7 +30,9 @@ def get_func_choice():
 
 
 if __name__ == "__main__":
-    load_dotenv("conf/.env")
+    import os
+    env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+    load_dotenv(env_file)
     welcome_message()
 
     FuncClass = get_func_choice()  # 获取用户选择的功能类

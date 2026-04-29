@@ -2,6 +2,11 @@ import abc
 import os
 from abc import abstractmethod
 from typing import List, Dict, Any
+from dotenv import load_dotenv
+
+# 加载环境变量（兼容正式环境使用 .env.dist）
+env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+load_dotenv(env_file)
 
 from biz.llm.factory import Factory
 from biz.utils.token_util import count_tokens, truncate_text_by_tokens

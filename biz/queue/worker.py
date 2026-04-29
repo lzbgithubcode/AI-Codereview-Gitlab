@@ -1,6 +1,11 @@
 import os
 import traceback
 from datetime import datetime
+from dotenv import load_dotenv
+
+# 加载环境变量（兼容正式环境使用 .env.dist）
+env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+load_dotenv(env_file)
 
 from biz.entity.review_entity import MergeRequestReviewEntity, PushReviewEntity
 from biz.event.event_manager import event_manager
@@ -19,9 +24,9 @@ from biz.utils.log import logger
 def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gitlab_url_slug: str):
     push_review_enabled = os.environ.get('PUSH_REVIEW_ENABLED', '0') == '1'
     try:
-        logger.info('gitlab_url: %s, gitlab_token=:%s', gitlab_url,gitlab_token)
+        logger.info('请求gitlab_url: %s, gitlab_token=:%s', gitlab_url,gitlab_token)
         handler = PushHandler(webhook_data, gitlab_token, gitlab_url)
-        logger.info('Push Hook event received')
+        # logger.info('Push Hook event received')
         commits = handler.get_push_commits()
         if not commits:
             logger.error('Failed to get commits')
@@ -34,7 +39,7 @@ def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gi
         if push_review_enabled:
             # 获取PUSH的changes
             changes = handler.get_push_changes()
-            logger.info('changes: %s', changes)
+            logger.info('获取到本地代码的changes: %s', changes)
             changes = filter_changes(changes)
             if not changes:
                 logger.info('未检测到PUSH代码的修改,修改文件可能不满足SUPPORTED_EXTENSIONS。')

@@ -4,11 +4,16 @@
 import atexit
 import os
 import traceback
+from dotenv import load_dotenv
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from biz.utils.log import logger
 from biz.api.routes.daily_report import daily_report_task
+
+# 加载环境变量（兼容正式环境使用 .env.dist）
+env_file = "conf/.env" if os.path.exists("conf/.env") else "conf/.env.dist"
+load_dotenv(env_file)
 
 
 def setup_scheduler():

@@ -30,7 +30,8 @@ class BaseReviewer(abc.ABC):
                 prompts = yaml.safe_load(file).get(prompt_key, {})
 
                 # 使用Jinja2渲染模板
-                def render_template(template_str: str) -> str:
+                def render_template(template_str: str, diffs_placeholder: str = "__DIFFS_PLACEHOLDER__", 
+                                    commits_placeholder: str = "__COMMITS_PLACEHOLDER__") -> str:
                     # 创建示例issue对象，用于模板渲染测试
                     example_issue = {
                         'title': '示例问题标题',
@@ -51,6 +52,7 @@ class BaseReviewer(abc.ABC):
                     }
                     
                     # 传递所有必要的模板变量，避免渲染错误
+                    # 注意：diffs_text 和 commits_text 使用占位符，在 review_code 方法中替换
                     template_vars = {
                         'style': style,
                         'issues_by_severity': {},
@@ -65,7 +67,10 @@ class BaseReviewer(abc.ABC):
                         'total_issues': 0,
                         'estimated_time_hours': 0.0,
                         # 提供示例issue用于循环测试
-                        'issue': example_issue
+                        'issue': example_issue,
+                        # 变量占位符 - 在 review_code 方法中会被替换为实际内容
+                        'diffs_text': diffs_placeholder,
+                        'commits_text': commits_placeholder
                     }
                     return Template(template_str).render(**template_vars)
 
@@ -222,13 +227,17 @@ class CodeReviewer(BaseReviewer):
 
     def review_code(self, diffs_text: str, commits_text: str = "") -> str:
         """Review 代码并返回结果"""
+        # Jinja2 渲染后的 user_prompt 中，diffs_text 和 commits_text 已被替换为占位符
+        # 这里使用占位符进行字符串替换
+        user_content = self.prompts["user_message"]["content"]
+        user_content = user_content.replace("__DIFFS_PLACEHOLDER__", diffs_text)
+        user_content = user_content.replace("__COMMITS_PLACEHOLDER__", commits_text)
+        
         messages = [
             self.prompts["system_message"],
             {
                 "role": "user",
-                "content": self.prompts["user_message"]["content"].format(
-                    diffs_text=diffs_text, commits_text=commits_text
-                ),
+                "content": user_content,
             },
         ]
         return self.call_llm(messages)

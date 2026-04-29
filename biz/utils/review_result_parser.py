@@ -113,7 +113,7 @@ class ReviewResultParser:
             return {"valid": False, "message": "JSON数据标记位置错误"}
         
         # 检查是否有模板变量残留
-        if re.search(r'\{\{.*?\}\}', review_result):
+        if re.search(r'{{.*?}}', review_result):
             return {"valid": False, "message": "检测到未处理的模板变量"}
         
         return {"valid": True, "message": "格式验证通过"}
@@ -122,7 +122,7 @@ class ReviewResultParser:
     def _clean_json_text(json_text: str) -> str:
         """清理JSON文本，处理常见问题"""
         # 移除模板变量
-        json_text = re.sub(r'\{\{.*?\}\}', '0', json_text)
+        json_text = re.sub(r'{{.*?}}', '0', json_text)
         
         # 移除Markdown代码块标记
         json_text = re.sub(r'```[\w]*\n?', '', json_text)

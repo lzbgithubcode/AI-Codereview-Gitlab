@@ -109,7 +109,7 @@ class PromptValidator:
             result["errors"].append("检测到随机字符串")
         
         # 检查模板变量残留
-        if re.search(r'\{\{.*?\}\}', response):
+        if re.search(r'{{.*?}}', response):
             result["errors"].append("检测到未处理的模板变量")
         
         # 检查JSON数据位置

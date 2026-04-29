@@ -23,6 +23,8 @@ from biz.utils.log import logger
 
 def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gitlab_url_slug: str):
     push_review_enabled = os.environ.get('PUSH_REVIEW_ENABLED', '0') == '1'
+    # 当没有问题时是否也发布评论和通知（默认关闭）
+    notify_when_no_issues = os.environ.get('NOTIFY_WHEN_NO_ISSUES_ENABLED', '0') == '1'
     try:
         logger.info('请求gitlab_url: %s, gitlab_token=:%s', gitlab_url,gitlab_token)
         handler = PushHandler(webhook_data, gitlab_token, gitlab_url)
@@ -80,7 +82,7 @@ def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gi
                     additions += item['additions']
                     deletions += item['deletions']
 
-        # 将review结果提交到Gitlab的 notes（始终执行，无论是否启用Push审查）
+        # 将review结果提交到Gitlab的 notes
         if review_result:
             # 构建详细的评论内容
             project_name = webhook_data['project']['name']
@@ -95,35 +97,50 @@ def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gi
             low_issues = structured_data.get('low_issues', 0)
             suggestion_issues = structured_data.get('suggestion_issues', 0)
             
-            # 构建详细的评论格式
-            comment_content = f"""🤖 **AI代码审查报告**
+            # 只有存在问题或开启了"没有问题也通知"时才添加评论
+            if total_issues > 0 or notify_when_no_issues:
+                # 构建详细的评论格式
+                markdown_content = CodeReviewer.strip_json_section(review_result)
+                if total_issues > 0:
+                    # 有问题时，添加AI审查详情（重点标记问题代码和修改建议）
+                    comment_content = f"""🤖 **AI代码审查报告**
 
-**项目信息**
-- 📁 项目名称: {project_name}
-- 👤 提交人: {author}
-- 🌿 提交分支: {branch}
-- 📊 代码变更: +{additions} / -{deletions}
+📋 **项目信息**
+| 项目 | 值 |
+|-----|-----|
+| 📁 项目名称 | {project_name} |
+| 👤 提交人 | {author} |
+| 🌿 提交分支 | {branch} |
+| 📊 代码变更 | +{additions} / -{deletions} |
 
-**问题统计**
-| 严重程度 | 数量 |
-|---------|------|
-| 🔴 严重 | {critical_issues} |
-| 🟠 高 | {high_issues} |
-| 🟡 中 | {medium_issues} |
-| 🔵 低 | {low_issues} |
-| 💡 建议 | {suggestion_issues} |
-| **总计** | **{total_issues}** |
+📊 **问题统计**: 🔴{critical_issues} 🟠{high_issues} 🟡{medium_issues} 🔵{low_issues} 💡{suggestion_issues} | **总计: {total_issues}**
 
-**详细问题列表**
+⚠️ **AI审查详情**（有问题需要关注）
 
----
-
-{review_result}
+{markdown_content}
 
 ---
 *由AI代码审查系统自动生成*"""
-            
-            handler.add_push_notes(comment_content)
+                else:
+                    # 没有问题时，简化显示
+                    comment_content = f"""🤖 **AI代码审查报告**
+
+📋 **项目信息**
+| 项目 | 值 |
+|-----|-----|
+| 📁 项目名称 | {project_name} |
+| 👤 提交人 | {author} |
+| 🌿 提交分支 | {branch} |
+| 📊 代码变更 | +{additions} / -{deletions} |
+
+✅ **审查结果**: 未发现问题
+
+---
+*由AI代码审查系统自动生成*"""
+                
+                handler.add_push_notes(comment_content)
+            else:
+                logger.info(f'代码审查完成，问题数量为{total_issues}，不发布评论（NOTIFY_WHEN_NO_ISSUES_ENABLED未启用）')
         else:
             logger.info('没有需要添加的评论内容')
 
@@ -165,6 +182,8 @@ def handle_merge_request_event(webhook_data: dict, gitlab_token: str, gitlab_url
     :return:
     '''
     merge_review_only_protected_branches = os.environ.get('MERGE_REVIEW_ONLY_PROTECTED_BRANCHES_ENABLED', '0') == '1'
+    # 当没有问题时是否也发布评论和通知（默认关闭）
+    notify_when_no_issues = os.environ.get('NOTIFY_WHEN_NO_ISSUES_ENABLED', '0') == '1'
     try:
         # 解析Webhook数据
         handler = MergeRequestHandler(webhook_data, gitlab_token, gitlab_url)
@@ -241,36 +260,51 @@ def handle_merge_request_event(webhook_data: dict, gitlab_token: str, gitlab_url
         low_issues = structured_data.get('low_issues', 0)
         suggestion_issues = structured_data.get('suggestion_issues', 0)
         
-        # 构建详细的评论格式
-        comment_content = f"""🤖 **AI代码审查报告**
+        # 只有存在问题或开启了"没有问题也通知"时才添加评论
+        if total_issues > 0 or notify_when_no_issues:
+            # 构建详细的评论格式
+            markdown_content = CodeReviewer.strip_json_section(review_result)
+            if total_issues > 0:
+                # 有问题时，添加AI审查详情（重点标记问题代码和修改建议）
+                comment_content = f"""🤖 **AI代码审查报告**
 
-**合并请求信息**
-- 📁 项目名称: {project_name}
-- 👤 提交人: {author}
-- 🌿 源分支: {source_branch} → 目标分支: {target_branch}
-- 📊 代码变更: +{additions} / -{deletions}
+📋 **合并请求信息**
+| 项目 | 值 |
+|-----|-----|
+| 📁 项目名称 | {project_name} |
+| 👤 提交人 | {author} |
+| 🌿 分支 | {source_branch} → {target_branch} |
+| 📊 代码变更 | +{additions} / -{deletions} |
 
-**问题统计**
-| 严重程度 | 数量 |
-|---------|------|
-| 🔴 严重 | {critical_issues} |
-| 🟠 高 | {high_issues} |
-| 🟡 中 | {medium_issues} |
-| 🔵 低 | {low_issues} |
-| 💡 建议 | {suggestion_issues} |
-| **总计** | **{total_issues}** |
+📊 **问题统计**: 🔴{critical_issues} 🟠{high_issues} 🟡{medium_issues} 🔵{low_issues} 💡{suggestion_issues} | **总计: {total_issues}**
 
-**详细问题列表**
+⚠️ **AI审查详情**（有问题需要关注）
 
----
-
-{review_result}
+{markdown_content}
 
 ---
 *由AI代码审查系统自动生成*"""
-        
-        # 将review结果提交到Gitlab的 notes
-        handler.add_merge_request_notes(comment_content)
+            else:
+                # 没有问题时，简化显示
+                comment_content = f"""🤖 **AI代码审查报告**
+
+📋 **合并请求信息**
+| 项目 | 值 |
+|-----|-----|
+| 📁 项目名称 | {project_name} |
+| 👤 提交人 | {author} |
+| 🌿 分支 | {source_branch} → {target_branch} |
+| 📊 代码变更 | +{additions} / -{deletions} |
+
+✅ **审查结果**: 未发现问题
+
+---
+*由AI代码审查系统自动生成*"""
+            
+            # 将review结果提交到Gitlab的 notes
+            handler.add_merge_request_notes(comment_content)
+        else:
+            logger.info(f'代码审查完成，问题数量为{total_issues}，不发布评论（NOTIFY_WHEN_NO_ISSUES_ENABLED未启用）')
 
         # dispatch merge_request_reviewed event
         event_manager['merge_request_reviewed'].send(
@@ -377,6 +411,8 @@ def handle_github_pull_request_event(webhook_data: dict, github_token: str, gith
     :return:
     '''
     merge_review_only_protected_branches = os.environ.get('MERGE_REVIEW_ONLY_PROTECTED_BRANCHES_ENABLED', '0') == '1'
+    # 当没有问题时是否也发布评论和通知（默认关闭）
+    notify_when_no_issues = os.environ.get('NOTIFY_WHEN_NO_ISSUES_ENABLED', '0') == '1'
     try:
         # 解析Webhook数据
         handler = GithubPullRequestHandler(webhook_data, github_token, github_url)

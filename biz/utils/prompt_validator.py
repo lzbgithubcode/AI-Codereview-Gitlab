@@ -175,17 +175,18 @@ class PromptValidator:
         score -= len(quality_checks["errors"]) * 15
         score -= len(quality_checks["warnings"]) * 3
         
-        # 额外加分项
-        if "🔴" in response or "🟠" in response:  # 表情符号使用
-            score += 5
+        # 格式错误或内容错误时，不允许加分补偿
+        has_errors = len(format_checks["errors"]) > 0 or len(quality_checks["errors"]) > 0
         
-        if "```" in response:  # 代码块使用
-            score += 10
+        if not has_errors:
+            # 只有无错误时才加分
+            if "🔴" in response or "🟠" in response:
+                score += 5
+            if "```" in response:
+                score += 10
+            if "|" in response:
+                score += 5
         
-        if "表格" in response or "|" in response:  # 表格使用
-            score += 5
-        
-        # 确保分数在0-100之间
         return max(0, min(100, score))
     
     @staticmethod

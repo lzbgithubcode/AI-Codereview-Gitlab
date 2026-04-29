@@ -104,7 +104,7 @@ class BaseReviewer(abc.ABC):
                     "thresholds": {"acceptable": 60}
                 },
                 "retry_config": {
-                    "max_retries": 3
+                    "max_retries": 2
                 }
             }
 
@@ -229,6 +229,31 @@ class CodeReviewer(BaseReviewer):
         # 确保审查结果不为空
         if not review_result or review_result == "代码为空":
             review_result = "## 🔍 代码审查报告\n\n### 📊 审查统计\n- 严重：0个 | 高：0个 | 中：0个 | 低：0个 | 建议：0个\n- 预计修复时间：0小时\n\n### 审查说明\n未发现需要修复的问题，代码质量良好。"
+        
+        return review_result
+
+    @staticmethod
+    def strip_json_section(review_result: str) -> str:
+        """
+        移除AI返回结果中的JSON部分，只保留Markdown审查报告
+        用于GitLab评论和企业微信通知
+        
+        :param review_result: AI返回的完整结果（包含Markdown和JSON）
+        :return: 只包含Markdown部分的结果
+        """
+        if not review_result:
+            return review_result
+        
+        # 查找JSON数据分隔符
+        json_start = review_result.find('<!-- JSON_DATA_START -->')
+        
+        if json_start != -1:
+            # 截断JSON部分，保留Markdown部分
+            markdown_only = review_result[:json_start].strip()
+            # 移除Markdown末尾可能的无用分隔符
+            if markdown_only.endswith('---'):
+                markdown_only = markdown_only[:-3].strip()
+            return markdown_only
         
         return review_result
 

@@ -52,7 +52,6 @@ class BaseReviewer(abc.ABC):
                         'code_snippet': 'print("hello")',
                         'explanation': '这是问题解释',
                         'suggestion': '这是修改建议',
-                        'before_code': 'print("hello")',
                         'after_code': 'print("Hello, World!")'
                     }
                     
@@ -163,11 +162,10 @@ class BaseReviewer(abc.ABC):
     
     def _get_fallback_response(self) -> str:
         """获取降级响应"""
-        fallback_response = """## 🔍 代码审查报告
+        fallback_response = """## 🔍 AI代码审查报告
 
 ### 📊 审查统计
 - 严重：0个 | 高：0个 | 中：0个 | 低：0个 | 建议：0个
-- 预计修复时间：0小时
 
 ### 审查说明
 AI审查服务暂时不可用，请人工检查代码质量。

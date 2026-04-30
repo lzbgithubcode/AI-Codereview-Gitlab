@@ -113,8 +113,6 @@ def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gi
 | 🌿 提交分支 | {branch} |
 | 📊 代码变更 | +{additions} / -{deletions} |
 
-📊 **问题统计**: 🔴{critical_issues} 🟠{high_issues} 🟡{medium_issues} 🔵{low_issues} 💡{suggestion_issues} | **总计: {total_issues}**
-
 ⚠️ **AI审查详情**（有问题需要关注）
 
 {markdown_content}
@@ -122,18 +120,18 @@ def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gi
 ---
 *由AI代码审查系统自动生成*"""
                 else:
-                    # 没有问题时，简化显示
+                    # 没有问题时，按正常报告格式输出
                     comment_content = f"""🤖 **AI代码审查报告**
 
-📋 **项目信息**
-| 项目 | 值 |
-|-----|-----|
-| 📁 项目名称 | {project_name} |
-| 👤 提交人 | {author} |
-| 🌿 提交分支 | {branch} |
-| 📊 代码变更 | +{additions} / -{deletions} |
+📊 **问题统计**: 🔴0 🟠0 🟡0 🔵0 💡0 | **总计: 0**
 
-✅ **审查结果**: 未发现问题
+📋 **项目信息**
+- 📁 {project_name}
+- 👤 {author}
+- 🌿 {branch}
+- 📊 +{additions} / -{deletions}
+
+✅ **审查结果**: 代码审查通过，未发现问题
 
 ---
 *由AI代码审查系统自动生成*"""
@@ -275,8 +273,6 @@ def handle_merge_request_event(webhook_data: dict, gitlab_token: str, gitlab_url
 | 👤 提交人 | {author} |
 | 🌿 分支 | {source_branch} → {target_branch} |
 | 📊 代码变更 | +{additions} / -{deletions} |
-
-📊 **问题统计**: 🔴{critical_issues} 🟠{high_issues} 🟡{medium_issues} 🔵{low_issues} 💡{suggestion_issues} | **总计: {total_issues}**
 
 ⚠️ **AI审查详情**（有问题需要关注）
 

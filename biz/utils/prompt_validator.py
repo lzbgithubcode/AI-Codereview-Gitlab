@@ -222,7 +222,7 @@ class PromptValidator:
 if __name__ == "__main__":
     # 测试数据
     test_response = """
-    ## 代码审查报告
+    ## AI代码审查报告
     
     ### 问题统计
     - 严重：0个 | 高：0个 | 中：0个 | 低：0个 | 建议：0个

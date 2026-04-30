@@ -20,18 +20,18 @@ code_review_prompt:
 
     ### 第1部分：Markdown审查报告（用于GitLab评论 + 企业微信通知）
 
-    ## 🔍 AI代码审查报告
+    ### 🔍 AI代码审查报告
 
-    ### 📊 问题统计
+    #### 📊 问题统计
     - **总问题数**: {{ total_issues }}个
-    - **严重程度分布**: 🔴严重:{{ issues_count['严重'] }} | 🟠高:{{ issues_count['高'] }} | 🟡中:{{ issues_count['中'] }} | 🔵低:{{ issues_count['低'] }} | 💡建议:{{ issues_count['建议'] }}
+    - **严重程度统计**: 🔴严重:{{ issues_count['严重'] }} | 🟠高:{{ issues_count['高'] }} | 🟡中:{{ issues_count['中'] }} | 🔵低:{{ issues_count['低'] }} | 💡建议:{{ issues_count['建议'] }}
 
-    ### 🔗 问题详情
+    #### 🔗 问题详情
 
     {% for severity in ['严重', '高', '中', '低', '建议'] %}
     {% if issues_count[severity] > 0 %}
 
-    #### {% if severity == '严重' %}🔴{% elif severity == '高' %}🟠{% elif severity == '中' %}🟡{% elif severity == '低' %}🔵{% else %}💡{% endif %} {{ severity }}级别问题 ({{ issues_count[severity] }}个)
+    ##### {% if severity == '严重' %}🔴{% elif severity == '高' %}🟠{% elif severity == '中' %}🟡{% elif severity == '低' %}🔵{% else %}💡{% endif %} {{ severity }}级别问题 ({{ issues_count[severity] }}个)
 
     {% for issue in issues[severity] %}
 
@@ -54,7 +54,7 @@ code_review_prompt:
     {% endif %}
     {% endfor %}
 
-    ### 📝 审查总结
+    #### 📝 审查总结
     本次审查发现了{{ total_issues }}个问题，建议按修复优先级逐步处理。
 
     ---
@@ -142,15 +142,15 @@ code_review_prompt:
 
     ### 正确的输出示例：
     ```
-    ## 🔍 AI代码审查报告
+    ### 🔍 AI代码审查报告
 
-    ### 📊 问题统计
+    #### 📊 问题统计
     - **总问题数**: 1个
-    - **严重程度分布**: 🔴严重:0 | 🟠高:0 | 🟡中:1 | 🔵低:0 | 💡建议:0
+    - **严重程度统计**: 🔴严重:0 | 🟠高:0 | 🟡中:1 | 🔵低:0 | 💡建议:0
 
-    ### 🔗 问题详情
+    #### 🔗 问题详情
 
-    #### 🟡 中级别问题 (1个)
+    ##### 🟡 中级别问题 (1个)
 
     **问题 #1：存在空指针风险**
     - 📍 位置: `src/user_service.py` 第 `45` 行

@@ -31,7 +31,9 @@ os.makedirs(log_dir, exist_ok=True)
 today = datetime.now().strftime('%Y-%m-%d')
 
 # 普通日志（按日期轮转，每天一个文件）
-log_file = os.environ.get("LOG_FILE", f"{log_dir}/app_{today}.log")
+# LOG_FILE 配置文件夹路径，文件名固定为 app_ai_code_review_日期.log
+log_file_dir = os.environ.get("LOG_FILE", log_dir)
+log_file = f"{log_file_dir}/app_ai_code_review_{today}.log"
 log_backup_count = int(os.environ.get("LOG_BACKUP_COUNT", 30))  # 默认保留30天
 # 设置日志级别
 log_level = os.environ.get("LOG_LEVEL", "INFO")
@@ -46,13 +48,14 @@ file_handler = TimedRotatingFileHandler(
     encoding='utf-8',
     atTime=None
 )
-# 重命名文件名中的日期变量
-file_handler.namer = lambda filename: filename.replace('.log', f'_{datetime.now().strftime("%Y-%m-%d")}.log')
+# 自定义namer函数，移除多余的日期后缀，保持格式：app_2026-04-30.log
+file_handler.namer = lambda filename: filename.rsplit('.', 1)[0] + f'_{datetime.now().strftime("%Y-%m-%d")}.log'
 file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(filename)s:%(funcName)s:%(lineno)d - %(message)s'))
 file_handler.setLevel(LOG_LEVEL)
 
 # 错误日志处理器（单独记录ERROR级别日志）
-error_log_file = os.environ.get("ERROR_LOG_FILE", f"{log_dir}/error_{today}.log")
+# 默认使用带日期的文件名
+error_log_file = f"{log_dir}/error_{today}.log"
 error_file_handler = TimedRotatingFileHandler(
     filename=error_log_file,
     when='midnight',
@@ -61,7 +64,8 @@ error_file_handler = TimedRotatingFileHandler(
     encoding='utf-8',
     atTime=None
 )
-error_file_handler.namer = lambda filename: filename.replace('.log', f'_{datetime.now().strftime("%Y-%m-%d")}.log')
+# 自定义namer函数，移除多余的日期后缀，保持格式：error_2026-04-30.log
+error_file_handler.namer = lambda filename: filename.rsplit('.', 1)[0] + f'_{datetime.now().strftime("%Y-%m-%d")}.log'
 error_file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(filename)s:%(funcName)s:%(lineno)d - %(message)s'))
 error_file_handler.setLevel(logging.ERROR)  # 只记录ERROR级别
 

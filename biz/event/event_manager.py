@@ -41,35 +41,36 @@ def on_merge_request_reviewed(mr_review_entity: MergeRequestReviewEntity):
         # 有问题时，添加AI审查详情（重点标记问题代码和修改建议）
         im_msg = f"""🤖 **AI代码审查报告**
 
-📋 **合并请求信息**
-| 项目 | 值 |
-|-----|-----|
-| 📁 项目名称 | {mr_review_entity.project_name} |
-| 👤 提交人 | {mr_review_entity.author} |
-| 🌿 分支 | {mr_review_entity.source_branch} → {mr_review_entity.target_branch} |
-| 📊 代码变更 | +{mr_review_entity.additions or 0} / -{mr_review_entity.deletions or 0} |
+📋 **项目合并请求信息**
 
+- 📁项目名称: {mr_review_entity.project_name}
+- 👤提交人: {mr_review_entity.author}
+- 🌿合并分支: 源{mr_review_entity.source_branch} → 目标{mr_review_entity.target_branch}
+- 📊代码变更: +{mr_review_entity.additions or 0} / -{mr_review_entity.deletions or 0} 
+
+----------------------------------------------------------------------------
 ⚠️ **AI审查详情**（有问题需要关注）
 
 {markdown_result}
 
----
+----------------------------------------------------------------------------
 *由AI代码审查系统自动生成*"""
     else:
         # 没有问题时，按正常报告格式输出
         im_msg = f"""🤖 **AI代码审查报告**
+        
+📋 **项目合并请求信息**
+
+- 📁项目名称: {mr_review_entity.project_name}
+- 👤提交人: {mr_review_entity.author}
+- 🌿分支: 源{mr_review_entity.source_branch} → 目标{mr_review_entity.target_branch}
+- 📊代码变更: +{mr_review_entity.additions or 0} / -{mr_review_entity.deletions or 0} 
 
 📊 **问题统计**: 🔴0 🟠0 🟡0 🔵0 💡0 | **总计: 0**
 
-📋 **项目信息**
-- 📁 {mr_review_entity.project_name}
-- 👤 {mr_review_entity.author}
-- 🌿 {mr_review_entity.source_branch} → {mr_review_entity.target_branch}
-- 📊 +{mr_review_entity.additions or 0} / -{mr_review_entity.deletions or 0}
-
 ✅ **审查结果**: 代码审查通过，未发现问题
 
----
+----------------------------------------------------------------------------
 *由AI代码审查系统自动生成*"""
     
     notifier.send_notification(content=im_msg, msg_type='markdown', title='Merge Request Review',
@@ -106,25 +107,21 @@ def on_push_reviewed(entity: PushReviewEntity):
     if total_issues > 0:
         # 有问题时，添加AI审查详情（重点标记问题代码和修改建议）
         im_msg = f"""🤖 **AI代码审查报告**
-📋 **项目信息**
-| 项目 | 值 |
-|-----|-----|
-| 📁 项目名称 | {entity.project_name} |
-| 👤 提交人 | {entity.author} |
-| 🌿 提交分支 | {entity.branch} |
-| 📊 代码变更 | +{entity.additions or 0} / -{entity.deletions or 0} |
-
+📋 **项目基本信息**
+- 📁项目名称: {entity.project_name}
+- 👤提交人: {entity.author}
+- 🌿提交分支: {entity.branch}
+- 📊代码变更: +{entity.additions or 0} / -{entity.deletions or 0}
+----------------------------------------------------------------------------
 ⚠️ **AI审查详情**（有问题需要关注）
 
 {markdown_result}
 
----
+----------------------------------------------------------------------------
 *由AI代码审查系统自动生成*"""
     else:
         # 没有问题时，按正常报告格式输出
         im_msg = f"""🤖 **AI代码审查报告**
-
-📊 **问题统计**: 🔴0 🟠0 🟡0 🔵0 💡0 | **总计: 0**
 
 📋 **项目信息**
 - 📁项目名称: {entity.project_name}

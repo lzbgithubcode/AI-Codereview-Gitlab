@@ -22,7 +22,13 @@ from biz.utils.log import logger
 
 
 def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gitlab_url_slug: str):
-    push_review_enabled = os.environ.get('PUSH_REVIEW_ENABLED', '0') == '1'
+    # AI代码审查功能总开关
+    ai_review_enabled = os.environ.get('AI_CODE_REVIEW_ENABLED', '1') == '1'
+    if not ai_review_enabled:
+        logger.info('AI代码审查功能已关闭，跳过Push事件处理')
+        return
+    
+    push_review_enabled = os.environ.get('PUSH_REVIEW_ENABLED', '1') == '1'
     # 当没有问题时是否也发布评论和通知（默认关闭）
     notify_when_no_issues = os.environ.get('NOTIFY_WHEN_NO_ISSUES_ENABLED', '0') == '1'
     try:
@@ -106,34 +112,33 @@ def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gi
                     comment_content = f"""🤖 **AI代码审查报告**
 
 📋 **项目信息**
-| 项目 | 值 |
-|-----|-----|
-| 📁 项目名称 | {project_name} |
-| 👤 提交人 | {author} |
-| 🌿 提交分支 | {branch} |
-| 📊 代码变更 | +{additions} / -{deletions} |
+- 📁项目名称: {project_name}
+- 👤提交人: {author}
+- 🌿提交分支: {branch}
+- 📊代码变更: +{additions} / -{deletions}
+
+----------------------------------------------------------------------------
 
 ⚠️ **AI审查详情**（有问题需要关注）
 
 {markdown_content}
 
----
+----------------------------------------------------------------------------
 *由AI代码审查系统自动生成*"""
                 else:
                     # 没有问题时，按正常报告格式输出
                     comment_content = f"""🤖 **AI代码审查报告**
 
-📊 **问题统计**: 🔴0 🟠0 🟡0 🔵0 💡0 | **总计: 0**
-
 📋 **项目信息**
-- 📁 {project_name}
-- 👤 {author}
-- 🌿 {branch}
-- 📊 +{additions} / -{deletions}
+
+- 📁项目名称: {project_name}
+- 👤提交人: {author}
+- 🌿提交分支: {branch}
+- 📊代码变更: +{additions} / -{deletions}
 
 ✅ **审查结果**: 代码审查通过，未发现问题
 
----
+----------------------------------------------------------------------------
 *由AI代码审查系统自动生成*"""
                 
                 handler.add_push_notes(comment_content)
@@ -179,6 +184,17 @@ def handle_merge_request_event(webhook_data: dict, gitlab_token: str, gitlab_url
     :param gitlab_url_slug:
     :return:
     '''
+    # AI代码审查功能总开关
+    ai_review_enabled = os.environ.get('AI_CODE_REVIEW_ENABLED', '1') == '1'
+    if not ai_review_enabled:
+        logger.info('AI代码审查功能已关闭，跳过Merge Request事件处理')
+        return
+    
+    merge_request_review_enabled = os.environ.get('MERGE_REQUEST_REVIEW_ENABLED', '1') == '1'
+    if not merge_request_review_enabled:
+        logger.info('Merge Request审查功能已关闭，跳过此事件')
+        return
+    
     merge_review_only_protected_branches = os.environ.get('MERGE_REVIEW_ONLY_PROTECTED_BRANCHES_ENABLED', '0') == '1'
     # 当没有问题时是否也发布评论和通知（默认关闭）
     notify_when_no_issues = os.environ.get('NOTIFY_WHEN_NO_ISSUES_ENABLED', '0') == '1'
@@ -267,34 +283,32 @@ def handle_merge_request_event(webhook_data: dict, gitlab_token: str, gitlab_url
                 comment_content = f"""🤖 **AI代码审查报告**
 
 📋 **合并请求信息**
-| 项目 | 值 |
-|-----|-----|
-| 📁 项目名称 | {project_name} |
-| 👤 提交人 | {author} |
-| 🌿 分支 | {source_branch} → {target_branch} |
-| 📊 代码变更 | +{additions} / -{deletions} |
 
+- 📁项目名称: {project_name}
+- 👤提交人: {author}
+- 🌿分支: 源{source_branch} → 目标{target_branch}
+- 📊代码变更: +{additions} / -{deletions}
+
+----------------------------------------------------------------------------
 ⚠️ **AI审查详情**（有问题需要关注）
 
 {markdown_content}
 
----
+----------------------------------------------------------------------------
 *由AI代码审查系统自动生成*"""
             else:
                 # 没有问题时，简化显示
                 comment_content = f"""🤖 **AI代码审查报告**
 
 📋 **合并请求信息**
-| 项目 | 值 |
-|-----|-----|
-| 📁 项目名称 | {project_name} |
-| 👤 提交人 | {author} |
-| 🌿 分支 | {source_branch} → {target_branch} |
-| 📊 代码变更 | +{additions} / -{deletions} |
+- 📁项目名称: {project_name}
+- 👤提交人: {author}
+- 🌿分支: 源{source_branch} → 目标{target_branch}
+- 📊代码变更: +{additions} / -{deletions}
 
 ✅ **审查结果**: 未发现问题
 
----
+----------------------------------------------------------------------------
 *由AI代码审查系统自动生成*"""
             
             # 将review结果提交到Gitlab的 notes
@@ -342,7 +356,13 @@ def handle_merge_request_event(webhook_data: dict, gitlab_token: str, gitlab_url
 
 
 def handle_github_push_event(webhook_data: dict, github_token: str, github_url: str, github_url_slug: str):
-    push_review_enabled = os.environ.get('PUSH_REVIEW_ENABLED', '0') == '1'
+    # AI代码审查功能总开关
+    ai_review_enabled = os.environ.get('AI_CODE_REVIEW_ENABLED', '1') == '1'
+    if not ai_review_enabled:
+        logger.info('AI代码审查功能已关闭，跳过GitHub Push事件处理')
+        return
+    
+    push_review_enabled = os.environ.get('PUSH_REVIEW_ENABLED', '1') == '1'
     try:
         handler = GithubPushHandler(webhook_data, github_token, github_url)
         logger.info('GitHub Push event received')
@@ -406,6 +426,17 @@ def handle_github_pull_request_event(webhook_data: dict, github_token: str, gith
     :param github_url_slug:
     :return:
     '''
+    # AI代码审查功能总开关
+    ai_review_enabled = os.environ.get('AI_CODE_REVIEW_ENABLED', '1') == '1'
+    if not ai_review_enabled:
+        logger.info('AI代码审查功能已关闭，跳过GitHub Pull Request事件处理')
+        return
+    
+    merge_request_review_enabled = os.environ.get('MERGE_REQUEST_REVIEW_ENABLED', '1') == '1'
+    if not merge_request_review_enabled:
+        logger.info('Merge Request审查功能已关闭，跳过此事件')
+        return
+    
     merge_review_only_protected_branches = os.environ.get('MERGE_REVIEW_ONLY_PROTECTED_BRANCHES_ENABLED', '0') == '1'
     # 当没有问题时是否也发布评论和通知（默认关闭）
     notify_when_no_issues = os.environ.get('NOTIFY_WHEN_NO_ISSUES_ENABLED', '0') == '1'
@@ -490,7 +521,13 @@ def handle_github_pull_request_event(webhook_data: dict, github_token: str, gith
 
 
 def handle_gitea_push_event(webhook_data: dict, gitea_token: str, gitea_url: str, gitea_url_slug: str):
-    push_review_enabled = os.environ.get('PUSH_REVIEW_ENABLED', '0') == '1'
+    # AI代码审查功能总开关
+    ai_review_enabled = os.environ.get('AI_CODE_REVIEW_ENABLED', '1') == '1'
+    if not ai_review_enabled:
+        logger.info('AI代码审查功能已关闭，跳过Gitea Push事件处理')
+        return
+    
+    push_review_enabled = os.environ.get('PUSH_REVIEW_ENABLED', '1') == '1'
     try:
         handler = GiteaPushHandler(webhook_data, gitea_token, gitea_url)
         logger.info('Gitea Push event received')
@@ -547,6 +584,17 @@ def handle_gitea_push_event(webhook_data: dict, gitea_token: str, gitea_url: str
 
 
 def handle_gitea_pull_request_event(webhook_data: dict, gitea_token: str, gitea_url: str, gitea_url_slug: str):
+    # AI代码审查功能总开关
+    ai_review_enabled = os.environ.get('AI_CODE_REVIEW_ENABLED', '1') == '1'
+    if not ai_review_enabled:
+        logger.info('AI代码审查功能已关闭，跳过Gitea Pull Request事件处理')
+        return
+    
+    merge_request_review_enabled = os.environ.get('MERGE_REQUEST_REVIEW_ENABLED', '1') == '1'
+    if not merge_request_review_enabled:
+        logger.info('Merge Request审查功能已关闭，跳过此事件')
+        return
+    
     merge_review_only_protected_branches = os.environ.get('MERGE_REVIEW_ONLY_PROTECTED_BRANCHES_ENABLED', '0') == '1'
     try:
         handler = GiteaPullRequestHandler(webhook_data, gitea_token, gitea_url)

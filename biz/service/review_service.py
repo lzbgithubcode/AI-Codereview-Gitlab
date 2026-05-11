@@ -182,22 +182,25 @@ class ReviewService:
     @staticmethod
     def insert_mr_review_log(entity: MergeRequestReviewEntity):
         """插入合并请求审核日志"""
+        import json
         try:
             with DBConnectionFactory.get_connection() as conn:
                 cursor = conn.cursor()
+                # 将webhook_data序列化为JSON字符串
+                webhook_data_str = json.dumps(entity.webhook_data) if entity.webhook_data else ''
                 cursor.execute('''
-                                INSERT INTO mr_review_log (project_name,author, source_branch, target_branch, 
-                                updated_at, commit_messages, score, url,review_result, 
-                                total_issues, critical_issues, high_issues, medium_issues, low_issues, suggestion_issues, estimated_time_hours,
-                                additions, deletions, last_commit_id)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                INSERT INTO mr_review_log (project_name, author, source_branch, target_branch, 
+                                updated_at, commit_messages, score, url, review_result, 
+                                additions, deletions, last_commit_id, url_slug, webhook_data,
+                                total_issues, critical_issues, high_issues, medium_issues, low_issues, suggestion_issues, estimated_time_hours)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             ''',
                                (entity.project_name, entity.author, entity.source_branch,
                                 entity.target_branch, entity.updated_at, entity.commit_messages, entity.score,
                                 entity.url, entity.review_result,
+                                entity.additions, entity.deletions, entity.last_commit_id, entity.url_slug, webhook_data_str,
                                 entity.total_issues, entity.critical_issues, entity.high_issues, entity.medium_issues,
-                                entity.low_issues, entity.suggestion_issues, entity.estimated_time_hours,
-                                entity.additions, entity.deletions, entity.last_commit_id))
+                                entity.low_issues, entity.suggestion_issues, entity.estimated_time_hours))
                 conn.commit()
         except Exception as e:
             print(f"Error inserting review log: {e}")
@@ -258,21 +261,24 @@ class ReviewService:
     @staticmethod
     def insert_push_review_log(entity: PushReviewEntity):
         """插入推送审核日志"""
+        import json
         try:
             with DBConnectionFactory.get_connection() as conn:
                 cursor = conn.cursor()
+                # 将webhook_data序列化为JSON字符串
+                webhook_data_str = json.dumps(entity.webhook_data) if entity.webhook_data else ''
                 cursor.execute('''
-                                INSERT INTO push_review_log (project_name,author, branch, updated_at, commit_messages, score,review_result, 
-                                total_issues, critical_issues, high_issues, medium_issues, low_issues, suggestion_issues, estimated_time_hours,
-                                additions, deletions)
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                INSERT INTO push_review_log (project_name, author, branch, updated_at, commit_messages, score, review_result, 
+                                additions, deletions, url_slug, webhook_data,
+                                total_issues, critical_issues, high_issues, medium_issues, low_issues, suggestion_issues, estimated_time_hours)
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             ''',
                                (entity.project_name, entity.author, entity.branch,
                                 entity.updated_at, entity.commit_messages, entity.score,
                                 entity.review_result,
+                                entity.additions, entity.deletions, entity.url_slug, webhook_data_str,
                                 entity.total_issues, entity.critical_issues, entity.high_issues, entity.medium_issues,
-                                entity.low_issues, entity.suggestion_issues, entity.estimated_time_hours,
-                                entity.additions, entity.deletions))
+                                entity.low_issues, entity.suggestion_issues, entity.estimated_time_hours))
                 conn.commit()
         except Exception as e:
             print(f"Error inserting review log: {e}")

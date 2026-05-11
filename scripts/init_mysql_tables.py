@@ -34,7 +34,11 @@ def init_mysql_tables():
                     score INT,
                     url TEXT,
                     review_result TEXT,
-                    
+                    additions INT DEFAULT 0,
+                    deletions INT DEFAULT 0,
+                    last_commit_id VARCHAR(255) DEFAULT '',
+                    url_slug VARCHAR(255) DEFAULT '',
+                    webhook_data TEXT,
                     -- 结构化审查结果字段
                     total_issues INT DEFAULT 0,
                     critical_issues INT DEFAULT 0,
@@ -43,10 +47,6 @@ def init_mysql_tables():
                     low_issues INT DEFAULT 0,
                     suggestion_issues INT DEFAULT 0,
                     estimated_time_hours FLOAT DEFAULT 0.0,
-                    
-                    additions INT DEFAULT 0,
-                    deletions INT DEFAULT 0,
-                    last_commit_id VARCHAR(255) DEFAULT '',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
@@ -62,7 +62,10 @@ def init_mysql_tables():
                     commit_messages TEXT,
                     score INT,
                     review_result TEXT,
-                    
+                    additions INT DEFAULT 0,
+                    deletions INT DEFAULT 0,
+                    url_slug VARCHAR(255) DEFAULT '',
+                    webhook_data TEXT,
                     -- 结构化审查结果字段
                     total_issues INT DEFAULT 0,
                     critical_issues INT DEFAULT 0,
@@ -71,9 +74,6 @@ def init_mysql_tables():
                     low_issues INT DEFAULT 0,
                     suggestion_issues INT DEFAULT 0,
                     estimated_time_hours FLOAT DEFAULT 0.0,
-                    
-                    additions INT DEFAULT 0,
-                    deletions INT DEFAULT 0,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')

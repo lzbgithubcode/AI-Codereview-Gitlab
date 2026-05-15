@@ -44,6 +44,16 @@ def handle_push_event(webhook_data: dict, gitlab_token: str, gitlab_url: str, gi
         score = 0
         additions = 0
         deletions = 0
+        # 初始化结构化数据为默认值
+        structured_data = {
+            'total_issues': 0,
+            'critical_issues': 0,
+            'high_issues': 0,
+            'medium_issues': 0,
+            'low_issues': 0,
+            'suggestion_issues': 0,
+            'estimated_time_hours': 0.0
+        }
         if push_review_enabled:
             # 获取PUSH的changes
             changes = handler.get_push_changes()
@@ -375,6 +385,16 @@ def handle_github_push_event(webhook_data: dict, github_token: str, github_url: 
         score = 0
         additions = 0
         deletions = 0
+        # 初始化结构化数据为默认值
+        structured_data = {
+            'total_issues': 0,
+            'critical_issues': 0,
+            'high_issues': 0,
+            'medium_issues': 0,
+            'low_issues': 0,
+            'suggestion_issues': 0,
+            'estimated_time_hours': 0.0
+        }
         if push_review_enabled:
             # 获取PUSH的changes
             changes = handler.get_push_changes()
@@ -409,6 +429,14 @@ def handle_github_push_event(webhook_data: dict, github_token: str, github_url: 
             webhook_data=webhook_data,
             additions=additions,
             deletions=deletions,
+            # 添加结构化审查数据
+            total_issues=structured_data.get('total_issues', 0),
+            critical_issues=structured_data.get('critical_issues', 0),
+            high_issues=structured_data.get('high_issues', 0),
+            medium_issues=structured_data.get('medium_issues', 0),
+            low_issues=structured_data.get('low_issues', 0),
+            suggestion_issues=structured_data.get('suggestion_issues', 0),
+            estimated_time_hours=structured_data.get('estimated_time_hours', 0.0)
         ))
 
     except Exception as e:
@@ -512,6 +540,14 @@ def handle_github_pull_request_event(webhook_data: dict, github_token: str, gith
                 additions=additions,
                 deletions=deletions,
                 last_commit_id=github_last_commit_id,
+                # 添加结构化审查数据
+                total_issues=structured_data.get('total_issues', 0),
+                critical_issues=structured_data.get('critical_issues', 0),
+                high_issues=structured_data.get('high_issues', 0),
+                medium_issues=structured_data.get('medium_issues', 0),
+                low_issues=structured_data.get('low_issues', 0),
+                suggestion_issues=structured_data.get('suggestion_issues', 0),
+                estimated_time_hours=structured_data.get('estimated_time_hours', 0.0),
             ))
 
     except Exception as e:
@@ -540,6 +576,16 @@ def handle_gitea_push_event(webhook_data: dict, gitea_token: str, gitea_url: str
         score = 0
         additions = 0
         deletions = 0
+        # 初始化结构化数据为默认值
+        structured_data = {
+            'total_issues': 0,
+            'critical_issues': 0,
+            'high_issues': 0,
+            'medium_issues': 0,
+            'low_issues': 0,
+            'suggestion_issues': 0,
+            'estimated_time_hours': 0.0
+        }
         if push_review_enabled:
             changes = handler.get_push_changes()
             logger.info('changes: %s', changes)
@@ -575,6 +621,14 @@ def handle_gitea_push_event(webhook_data: dict, gitea_token: str, gitea_url: str
             webhook_data=webhook_data,
             additions=additions,
             deletions=deletions,
+            # 添加结构化审查数据
+            total_issues=structured_data.get('total_issues', 0),
+            critical_issues=structured_data.get('critical_issues', 0),
+            high_issues=structured_data.get('high_issues', 0),
+            medium_issues=structured_data.get('medium_issues', 0),
+            low_issues=structured_data.get('low_issues', 0),
+            suggestion_issues=structured_data.get('suggestion_issues', 0),
+            estimated_time_hours=structured_data.get('estimated_time_hours', 0.0)
         ))
 
     except Exception as e:
@@ -642,7 +696,10 @@ def handle_gitea_pull_request_event(webhook_data: dict, gitea_token: str, gitea_
             return
 
         commits_text = ';'.join(commit.get('message', '').strip() for commit in commits)
-        review_result = CodeReviewer().review_and_strip_code(str(changes), commits_text)
+        # 使用新的结构化审查方法
+        review_data = CodeReviewer().review_code_with_stats(str(changes), commits_text)
+        review_result = review_data['review_result']
+        structured_data = review_data['structured_data']
 
         handler.add_pull_request_notes(f'Auto Review Result: \n{review_result}')
 
@@ -665,6 +722,14 @@ def handle_gitea_pull_request_event(webhook_data: dict, gitea_token: str, gitea_
                 additions=additions,
                 deletions=deletions,
                 last_commit_id=last_commit_id,
+                # 添加结构化审查数据
+                total_issues=structured_data.get('total_issues', 0),
+                critical_issues=structured_data.get('critical_issues', 0),
+                high_issues=structured_data.get('high_issues', 0),
+                medium_issues=structured_data.get('medium_issues', 0),
+                low_issues=structured_data.get('low_issues', 0),
+                suggestion_issues=structured_data.get('suggestion_issues', 0),
+                estimated_time_hours=structured_data.get('estimated_time_hours', 0.0),
             ))
 
     except Exception as e:
